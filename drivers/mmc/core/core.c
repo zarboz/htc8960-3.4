@@ -380,7 +380,9 @@ static void mmc_wait_for_req_done(struct mmc_host *host,
 				  struct mmc_request *mrq)
 {
 	struct mmc_command *cmd;
+#if defined CONFIG_MACH_MONARUDO
 	unsigned long timeout = 0;
+#endif
 
 	while (1) {
 #if defined CONFIG_MACH_MONARUDO
