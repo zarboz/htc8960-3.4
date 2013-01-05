@@ -746,8 +746,8 @@ static int rfcomm_sock_setsockopt(struct socket *sock, int level, int optname, c
 static int rfcomm_sock_getsockopt_old(struct socket *sock, int optname, char __user *optval, int __user *optlen)
 {
 	struct sock *sk = sock->sk;
+	struct sock *l2cap_sk;
 	struct rfcomm_conninfo cinfo;
-	struct l2cap_conn *conn = l2cap_pi(sk)->chan->conn;
 	int len, err = 0;
 	u32 opt;
 
@@ -790,6 +790,16 @@ static int rfcomm_sock_getsockopt_old(struct socket *sock, int optname, char __u
 			break;
 		}
 
+		l2cap_sk = rfcomm_pi(sk)->dlc->session->sock->sk;
+
+		cinfo.hci_handle = l2cap_pi(l2cap_sk)->conn->hcon->handle;
+		memcpy(cinfo.dev_class, l2cap_pi(l2cap_sk)->conn->hcon->dev_class, 3);
+
+		len = min_t(unsigned int, len, sizeof(cinfo));
+		if (copy_to_user(optval, (char *) &cinfo, len))
+			err = -EFAULT;
+
+		/*
 		memset(&cinfo, 0, sizeof(cinfo));
 		cinfo.hci_handle = conn->hcon->handle;
 		memcpy(cinfo.dev_class, conn->hcon->dev_class, 3);
@@ -797,7 +807,7 @@ static int rfcomm_sock_getsockopt_old(struct socket *sock, int optname, char __u
 		len = min_t(unsigned int, len, sizeof(cinfo));
 		if (copy_to_user(optval, (char *) &cinfo, len))
 			err = -EFAULT;
-
+		*/
 		break;
 
 	default:
@@ -954,8 +964,6 @@ int rfcomm_connect_ind(struct rfcomm_session *s, u8 channel, struct rfcomm_dlc *
 	sk = rfcomm_sock_alloc(sock_net(parent), NULL, BTPROTO_RFCOMM, GFP_ATOMIC);
 	if (!sk)
 		goto done;
-
-	bt_sock_reclassify_lock(sk, BTPROTO_RFCOMM);
 
 	rfcomm_sock_init(sk, parent);
 	bacpy(&bt_sk(sk)->src, &src);
