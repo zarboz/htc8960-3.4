@@ -50,7 +50,7 @@ int get_restart_level(void);
 int subsystem_restart(const char *subsys_name);
 int ssr_register_subsystem(struct subsys_data *subsys);
 #if defined(CONFIG_MSM8960_ONLY) || defined(CONFIG_MSM8930_ONLY)
-void ssr_set_restart_reason(const char *reason);
+static inline void ssr_set_restart_reason(const char *reason) {}
 #else
 static inline void ssr_set_restart_reason(const char *reason) {}
 #endif
