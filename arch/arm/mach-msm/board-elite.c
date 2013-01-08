@@ -3984,8 +3984,6 @@ static void __init elite_init(void)
 	/* msm8960_init_dsps(); */
 	//	msm_pm_set_rpm_wakeup_irq(RPM_APCC_CPU0_WAKE_UP_IRQ);
 	change_memory_power = &msm8960_change_memory_power;
-	create_proc_read_entry("emmc", 0, NULL, emmc_partition_read_proc, NULL);
-	//	create_proc_read_entry("dying_processes", 0, NULL, dying_processors_read_proc, NULL);
 
 #ifdef CONFIG_PERFLOCK
 	//	perflock_init(&elite_perflock_data);
