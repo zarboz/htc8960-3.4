@@ -25,12 +25,6 @@ static struct dsi_cmd_desc *elite_display_off_cmds = NULL;
 int elite_display_off_cmds_count = 0;
 static struct dsi_cmd_desc *elite_cmd_backlight_cmds = NULL;
 int elite_cmd_backlight_cmds_count = 0;
-#if defined CONFIG_FB_MSM_SELF_REFRESH
-static struct dsi_cmd_desc *elite_video_to_cmd = NULL;
-int elite_video_to_cmd_cnt = 0;
-static struct dsi_cmd_desc *elite_cmd_to_video = NULL;
-int elite_cmd_to_video_cnt = 0;
-#endif
 
 /* All MIPI codes .. */
 static char display_on[2] = {0x29, 0x00}; /* DTYPE_DCS_WRITE */
@@ -1414,120 +1408,6 @@ static struct dsi_cmd_desc nvt_LowTemp_wrkr_exit[] = {
 };
 
 /* himax command end */
-
-#if defined CONFIG_FB_MSM_SELF_REFRESH
-#define DSI_VIDEO_BASE  0xE0000
-static char display_mode_video_cmd_1[2] = {0xC2, 0x0B}; /* DTYPE_DCS_WRITE */
-static char display_mode_video_cmd_2[2] = {0xC2, 0x00}; /* DTYPE_DCS_WRITE */
-
-static char himax_vsync_start[2] = {0x00, 0x00}; /* DTYPE_DCS_WRITE */
-static char himax_hsync_start[2] = {0x00, 0x00}; /* DTYPE_DCS_WRITE */
-
-static struct dsi_cmd_desc video_to_cmd[] = {
-  {DTYPE_DCS_WRITE1, 1, 0, 0, 20,
-   sizeof(display_mode_video_cmd_1), display_mode_video_cmd_1},
-  {DTYPE_DCS_WRITE1, 1, 0, 0, 1,
-   sizeof(display_mode_video_cmd_2), display_mode_video_cmd_2},
-};
-
-static struct dsi_cmd_desc cmd_to_video[] = {
-  {DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-   sizeof(display_mode_video), display_mode_video},
-};
-
-static struct dsi_cmd_desc vsync_hsync_cmds[] = {
-  {DTYPE_VSYNC_START, 1, 0, 0, 0, sizeof(himax_vsync_start), himax_vsync_start},
-  {DTYPE_HSYNC_START, 1, 0, 0, 0, sizeof(himax_hsync_start), himax_hsync_start},
-  {DTYPE_VSYNC_START, 1, 0, 0, 0, sizeof(himax_vsync_start), himax_vsync_start},
-  {DTYPE_HSYNC_START, 1, 0, 0, 0, sizeof(himax_hsync_start), himax_hsync_start},
-};
-
-static void disable_video_mode_clk(void)
-{
-  /* Turn off video mode operation */
-  MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);
-  MIPI_OUTP(MIPI_DSI_BASE + 0x0000, 0x175);
-}
-
-static void enable_video_mode_clk(void)
-{
-  /* Turn on video mode operation */
-  MIPI_OUTP(MIPI_DSI_BASE + 0x0000, 0x173);
-  MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 1);
-}
-
-static DECLARE_WAIT_QUEUE_HEAD(elite_vsync_wait);
-static unsigned int vsync_irq;
-static int wait_vsync = 0;
-static int elite_vsync_gpio = 0;
-static int elite_irq_cnt = 0;    /* irq trigger trace */
-
-static irqreturn_t elite_vsync_interrupt(int irq, void *data)
-{
-  elite_irq_cnt++;
-  if (wait_vsync) {
-    PR_DISP_DEBUG("Wait vsync\n");
-    elite_vsync_gpio = 1;
-    wake_up(&elite_vsync_wait);
-    wait_vsync = 0;
-  }
-
-  return IRQ_HANDLED;
-}
-
-static int setup_vsync(struct platform_device *pdev, int init)
-{
-  int ret;
-  int gpio = 0;
-  PR_DISP_INFO("%s+++\n", __func__);
-
-  if (!init) {
-    ret = 0;
-    goto uninit;
-  }
-
-  ret = gpio_request(gpio, "vsync");
-  if (ret) {
-    PR_DISP_ERR("[%s] request vsync failed", __func__);
-    /* goto err_request_gpio_failed; */
-  }
-
-  ret = gpio_direction_input(gpio);
-  if (ret) {
-    PR_DISP_ERR("[%s] gpio_direction_input failed", __func__);
-    goto err_gpio_direction_input_failed;
-  }
-
-  ret = vsync_irq = gpio_to_irq(gpio);
-  if (ret < 0) {
-    PR_DISP_ERR("[%s] gpio_to_irq failed", __func__);
-    goto err_get_irq_num_failed;
-  }
-
-  ret = request_irq(vsync_irq, elite_vsync_interrupt, IRQF_TRIGGER_RISING,
-                    "vsync", pdev);
-  if (ret) {
-    PR_DISP_ERR("[%s] request_irq failed", __func__);
-    goto err_request_irq_failed;
-  }
-  PR_DISP_INFO("vsync on gpio %d now %d\n",
-               gpio, gpio_get_value(gpio));
-  disable_irq(vsync_irq);
-
-  PR_DISP_INFO("%s---\n", __func__);
-  return 0;
-
- uninit:
-  free_irq(gpio_to_irq(gpio), pdev);
- err_request_irq_failed:
- err_get_irq_num_failed:
- err_gpio_direction_input_failed:
-  gpio_free(gpio);
-  /* err_request_gpio_failed: */
-  return ret;
-}
-#endif
-
 static char disable_dim_cmd[2] = {0x53, 0x24};/* DTYPE_DCS_WRITE1 */
 static struct dsi_cmd_desc disable_dim[] = {{DTYPE_DCS_WRITE1, 1, 0, 0, 0, sizeof(disable_dim_cmd), disable_dim_cmd},};
 static struct dsi_cmd_desc *dim_cmds = disable_dim; /* default disable dim */
@@ -1560,13 +1440,6 @@ static void mipi_elite_per_panel_fcts_init(void)
 
   elite_cmd_backlight_cmds = cmd_backlight_cmds;
   elite_cmd_backlight_cmds_count = ARRAY_SIZE(cmd_backlight_cmds);
-
-#if defined CONFIG_FB_MSM_SELF_REFRESH
-  elite_video_to_cmd = video_to_cmd;
-  elite_video_to_cmd_cnt = ARRAY_SIZE(video_to_cmd);
-  elite_cmd_to_video = cmd_to_video;
-  elite_cmd_to_video_cnt = ARRAY_SIZE(cmd_to_video);
-#endif
 
   if (panel_type == PANEL_ID_ELITE_SONY_NT
       || panel_type == PANEL_ID_ELITE_SONY_NT_C2)
@@ -1628,50 +1501,31 @@ static int mipi_elite_lcd_on(struct platform_device *pdev)
   mipi  = &mfd->panel_info.mipi;
 
   mipi_set_tx_power_mode(1);
-  if (panel_type != PANEL_ID_ELITE_SHARP_HX) {
-    if (!mipi_lcd_on) {
-      mipi_dsi_cmds_tx(&elite_tx_buf, nvt_LowTemp_wrkr_enter,
-                       ARRAY_SIZE(nvt_LowTemp_wrkr_enter));
-
-      mipi_dsi_cmds_tx(&elite_tx_buf, nvt_LowTemp_wrkr_exit,
-                       ARRAY_SIZE(nvt_LowTemp_wrkr_exit));
-
-      gpio_set_value(ELITE_GPIO_LCD_RSTz, 0);
-      msleep(1);
-      gpio_set_value(ELITE_GPIO_LCD_RSTz, 1);
-      msleep(20);
+  if (panel_type != PANEL_ID_ELITE_SHARP_HX)
+    {
+      if (!mipi_lcd_on) 
+        {
+          mipi_dsi_cmds_tx(&elite_tx_buf, nvt_LowTemp_wrkr_enter,
+                           ARRAY_SIZE(nvt_LowTemp_wrkr_enter));
+          
+          mipi_dsi_cmds_tx(&elite_tx_buf, nvt_LowTemp_wrkr_exit,
+                           ARRAY_SIZE(nvt_LowTemp_wrkr_exit));
+          
+          gpio_set_value(ELITE_GPIO_LCD_RSTz, 0);
+          msleep(1);
+          gpio_set_value(ELITE_GPIO_LCD_RSTz, 1);
+          msleep(20);
+        }
     }
-  }
-
-  if (mipi->mode == DSI_VIDEO_MODE) {
-    if(!mipi_lcd_on) {
-      if (panel_type == PANEL_ID_ELITE_SONY_NT
-          || panel_type == PANEL_ID_ELITE_SONY_NT_C1
-          || panel_type == PANEL_ID_ELITE_SONY_NT_C2
-          || panel_type == PANEL_ID_ELITE_SHARP_NT
-          || panel_type == PANEL_ID_ELITE_SHARP_NT_C1
-          || panel_type == PANEL_ID_ELITE_SHARP_NT_C2
-          || panel_type == PANEL_ID_ELITE_SHARP_HX) {
-        mipi_dsi_cmds_tx(&elite_tx_buf, elite_video_on_cmds, elite_video_on_cmds_count);
-        PR_DISP_INFO("%s: panel_type video mode (%d)", __func__, panel_type);
-      } else {
-        PR_DISP_INFO("%s: panel_type video mode is not supported!(%d)", __func__, panel_type);
-      }
-    }
-  } else {
-    if (!mipi_lcd_on) {
-      if (panel_type == PANEL_ID_ELITE_SONY_NT
-          || panel_type == PANEL_ID_ELITE_SONY_NT_C1
-          || panel_type == PANEL_ID_ELITE_SONY_NT_C2
-          || panel_type == PANEL_ID_ELITE_SHARP_NT
-          || panel_type == PANEL_ID_ELITE_SHARP_NT_C1
-          || panel_type == PANEL_ID_ELITE_SHARP_NT_C2
-          || panel_type == PANEL_ID_ELITE_SHARP_HX) {
-        mipi_dsi_cmds_tx(&elite_tx_buf, elite_video_on_cmds, elite_video_on_cmds_count);
-        PR_DISP_INFO("%s: panel_type command mode (%d)", __func__, panel_type);
-      } else {
-        PR_DISP_INFO("%s: panel_type command mode is not supported!(%d)", __func__, panel_type);
-      }
+  if (!mipi_lcd_on)
+    {
+      if (panel_type != PANEL_ID_NONE) 
+        {
+          mipi_dsi_cmds_tx(&elite_tx_buf, elite_video_on_cmds, elite_video_on_cmds_count);
+          PR_DISP_INFO("%s: panel_type (%d)", __func__, panel_type);
+        }
+      else 
+          PR_DISP_INFO("%s: panel_type is not supported!(%d)", __func__, panel_type);
     }
   }
   mipi_set_tx_power_mode(0);
@@ -1710,8 +1564,6 @@ static int mipi_elite_lcd_off(struct platform_device *pdev)
 
 static void mipi_elite_display_on(struct msm_fb_data_type *mfd)
 {
-  //    msleep(120);
-
   cmdreq.cmds = elite_display_on_cmds;
   cmdreq.cmds_cnt = elite_display_on_cmds_count;
   cmdreq.flags = CMD_REQ_COMMIT;
@@ -1760,10 +1612,6 @@ static unsigned char elite_shrink_pwm(int val)
 
 inline void mipi_dsi_set_backlight(struct msm_fb_data_type *mfd, int level)
 {
-  struct mipi_panel_info *mipi;
-
-  mipi  = &mfd->panel_info.mipi;
-
   printk(KERN_ERR "[DISP] %s level=%d\n", __func__, level);
 
   led_pwm1[1] = elite_shrink_pwm(mfd->bl_level);
@@ -1807,18 +1655,6 @@ static void mipi_elite_set_backlight(struct msm_fb_data_type *mfd)
 
 static int __devinit mipi_elite_lcd_probe(struct platform_device *pdev)
 {
-#if defined CONFIG_FB_MSM_SELF_REFRESH
-  int ret;
-  PR_DISP_DEBUG("[SR]%s pdev->id=%d\n", __func__, pdev->id);
-  mipi_elite_pdata = pdev->dev.platform_data;
-
-  ret = setup_vsync(pdev, 1);
-  if (ret) {
-    dev_err(&pdev->dev, "mipi_elite_setup_vsync failed\n");
-    return ret;
-  }
-#endif
-
   mipi_elite_per_panel_fcts_init();
 
   if (pdev->id == 0) {
@@ -1831,70 +1667,6 @@ static int __devinit mipi_elite_lcd_probe(struct platform_device *pdev)
 }
 
 // Specific crappy functions here
-#if defined CONFIG_FB_MSM_SELF_REFRESH
-static void elite_self_refresh_switch(int on)
-{
-  int vsync_timeout;
-
-  if (on) {
-    PR_DISP_DEBUG("[SR] %s on\n", __func__);
-    mipi_set_tx_power_mode(0);
-    mipi_dsi_cmds_tx(&elite_panel_tx_buf, video_to_cmd,
-                     ARRAY_SIZE(video_to_cmd));
-    mipi_set_tx_power_mode(1);
-    /*! himax still have problem, temporary avoid video mode clk disable.*/
-    if (panel_type != PANEL_ID_ELITE_SHARP_HX)
-      disable_video_mode_clk();
-  } else {
-    int lost_vsync_count = 0;
-
-    lost_vsync_count = 0;
-    PR_DISP_DEBUG("[SR] %s off\n", __func__);
-    elite_irq_cnt = 0;
-    mipi_set_tx_power_mode(0);
-    enable_irq(vsync_irq);
-    if (panel_type != PANEL_ID_ELITE_SHARP_HX) {
-      wait_vsync = 1;
-      vsync_timeout = wait_event_timeout(elite_vsync_wait, elite_vsync_gpio ||
-                                         gpio_get_value(0), HZ/2);
-      mipi_dsi_cmds_tx(&elite_panel_tx_buf, cmd_to_video,
-                       ARRAY_SIZE(cmd_to_video));
-      elite_vsync_gpio = 0;
-      wait_vsync = 1;
-      vsync_timeout = wait_event_timeout(elite_vsync_wait, elite_vsync_gpio ||
-                                         gpio_get_value(0), HZ/2);
-      if (elite_irq_cnt > 2)
-        PR_DISP_DEBUG("[SR] vsync_count:%d\n", elite_irq_cnt);
-      mipi_dsi_sw_reset();
-      enable_video_mode_clk();
-      disable_irq(vsync_irq);
-      elite_vsync_gpio = 0;
-      if (vsync_timeout == 0)
-        PR_DISP_DEBUG("Lost vsync! non-HX\n");
-    } else {
-      /*! himax still have problem, temporary marked video mode clk.*/
-      mipi_dsi_cmds_tx(&elite_panel_tx_buf, cmd_to_video,
-                       ARRAY_SIZE(cmd_to_video));
-      wait_vsync = 1;
-      udelay(300);
-      vsync_timeout = wait_event_timeout(elite_vsync_wait, elite_vsync_gpio ||
-                                         gpio_get_value(0), HZ/2);
-      disable_irq(vsync_irq);
-      wait_vsync = 0;
-      elite_vsync_gpio = 0;
-      if (vsync_timeout == 0)
-        PR_DISP_DEBUG("Lost vsync! HX\n");
-
-      udelay(300);
-      mipi_dsi_cmds_tx(&elite_panel_tx_buf, vsync_hsync_cmds,
-                       ARRAY_SIZE(vsync_hsync_cmds));
-      /*mipi_dsi_sw_reset();
-        enable_video_mode_clk();*/
-    }
-  }
-}
-#endif
-
 #ifdef CONFIG_FB_MSM_CABC
 void mipi_elite_enable_ic_cabc(int cabc, bool dim_on, struct msm_fb_data_type *mfd)
 {
@@ -1934,9 +1706,6 @@ static struct msm_fb_panel_data elite_panel_data = {
   .set_backlight = mipi_elite_set_backlight,
   .display_on = mipi_elite_display_on,
   .display_off = mipi_elite_display_off,
-#if defined CONFIG_FB_MSM_SELF_REFRESH
-  .self_refresh_switch = mipi_elite_self_refresh_switch,
-#endif
 #ifdef CONFIG_FB_MSM_CABC
   .enable_cabc = mipi_elite_enable_ic_cabc,
 #endif
