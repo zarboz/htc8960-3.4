@@ -114,6 +114,7 @@
 #include <linux/htc_flashlight.h>
 #include <mach/board_htc.h>
 #include <mach/htc_util.h>
+#include <linux/mfd/pm8xxx/pm8xxx-vibrator-pwm.h>
 #ifdef CONFIG_HTC_BATT_8960
 #include "mach/htc_battery_8960.h"
 #include "mach/htc_battery_cell.h"
@@ -3273,6 +3274,23 @@ static struct platform_device ram_console_device = {
 	.resource	= ram_console_resources,
 };
 
+static struct pm8xxx_vibrator_pwm_platform_data pm8xxx_vib_pwm_pdata = {
+	.initial_vibrate_ms = 0,
+	.max_timeout_ms = 15000,
+	.duty_us = 49,
+	.PERIOD_US = 62,
+        .bank = 2,
+	.ena_gpio = ELITE_GPIO_HAPTIC_EN,
+	.vdd_gpio = PM8921_GPIO_PM_TO_SYS(ELITE_PMGPIO_HAPTIC_3V3_EN),
+};
+
+static struct platform_device vibrator_pwm_device = {
+	.name = PM8XXX_VIBRATOR_PWM_DEV_NAME,
+	.dev = {
+		.platform_data	= &pm8xxx_vib_pwm_pdata,
+	},
+};
+
 static struct platform_device *common_devices[] __initdata = {
         &ram_console_device,
 	&msm8960_device_acpuclk,
@@ -3351,6 +3369,7 @@ static struct platform_device *common_devices[] __initdata = {
 	&htc_battery_pdev,
 #endif
 	&msm_tsens_device,
+        &vibrator_pwm_device,
 };
 
 static struct platform_device *elite_devices[] __initdata = {

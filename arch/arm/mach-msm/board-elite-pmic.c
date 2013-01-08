@@ -324,12 +324,6 @@ static struct pm8xxx_led_platform_data pm8xxx_leds_pdata = {
 	.leds = pm8921_led_info,
 };
 
-static struct pm8xxx_vibrator_platform_data pm8xxx_vib_pdata = {
-	.initial_vibrate_ms = 0,
-	.max_timeout_ms = 15000,
-	.level_mV = 2500,
-};
-
 static struct pm8xxx_ccadc_platform_data pm8xxx_ccadc_pdata = {
     .r_sense		= 10,
 };
@@ -510,7 +504,6 @@ static struct pm8921_platform_data pm8921_platform_data __devinitdata = {
 	.adc_pdata		= &pm8xxx_adc_pdata,
 	.leds_pdata		= &pm8xxx_leds_pdata,
 	.ccadc_pdata		= &pm8xxx_ccadc_pdata,
-	.vibrator_pdata         = &pm8xxx_vib_pdata,
 };
 
 static struct msm_ssbi_platform_data msm8960_ssbi_pm8921_pdata __devinitdata = {
