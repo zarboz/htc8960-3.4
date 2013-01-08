@@ -193,8 +193,8 @@ static struct mipi_dsi_platform_data mipi_dsi_pdata = {
 	.dsi_power_save = mipi_dsi_panel_power,
 };
 
-static struct platform_device mipi_dsi_samsung_panel_device = {
-	.name = "mipi_samsung",
+static struct platform_device mipi_dsi_ville_panel_device = {
+	.name = "mipi_ville",
 	.id = 0,
 };
 
@@ -362,7 +362,7 @@ void __init msm8960_mdp_writeback(struct memtype_reserve* reserve_table)
 
 void __init ville_init_fb(void)
 {
-        platform_device_register(&mipi_dsi_samsung_panel_device);
+        platform_device_register(&mipi_dsi_ville_panel_device);
 	msm_fb_register_device("mdp", &mdp_pdata);
 	msm_fb_register_device("mipi_dsi", &mipi_dsi_pdata);
 	msm_fb_register_device("dtv", &dtv_pdata);

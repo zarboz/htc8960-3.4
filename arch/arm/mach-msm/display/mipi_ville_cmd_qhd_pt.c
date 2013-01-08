@@ -1,6 +1,6 @@
-#include "msm_fb.h"
-#include "mipi_dsi.h"
-#include "mipi_samsung.h"
+#include "../../../drivers/video/msm/msm_fb.h"
+#include "../../../drivers/video/msm/mipi_dsi.h"
+#include "mipi_ville.h"
 #include <mach/debug_display.h>
 
 static struct mipi_dsi_phy_ctrl dsi_cmd_mode_phy_db = {
@@ -23,13 +23,13 @@ static struct mipi_dsi_phy_ctrl dsi_cmd_mode_phy_db = {
 
 static struct msm_panel_info pinfo;
 
-static int __init mipi_cmd_samsung_qhd_pt_init(void)
+static int __init mipi_cmd_ville_qhd_pt_init(void)
 {
 	int ret;
 #if defined (CONFIG_FB_MSM_MDP_ABL)
 	pinfo.panel_char = smd_gamma_tbl;
 #endif
-        //        if (msm_fb_detect_client("mipi_video_samsung_qhd"))
+        //        if (msm_fb_detect_client("mipi_video_ville_qhd"))
         //          return 0;
 
 	pinfo.xres = 540;
@@ -80,7 +80,7 @@ static int __init mipi_cmd_samsung_qhd_pt_init(void)
 	pinfo.mipi.wr_mem_start = 0x2c;
 	pinfo.mipi.dsi_phy_db = &dsi_cmd_mode_phy_db;
 
-	ret = mipi_samsung_device_register(&pinfo, MIPI_DSI_PRIM,
+	ret = mipi_ville_device_register(&pinfo, MIPI_DSI_PRIM,
 						MIPI_DSI_PANEL_QHD_PT);
 	if (ret)
 		PR_DISP_ERR("%s: failed to register device!\n", __func__);
@@ -88,4 +88,4 @@ static int __init mipi_cmd_samsung_qhd_pt_init(void)
 	return ret;
 }
 
-module_init(mipi_cmd_samsung_qhd_pt_init);
+late_initcall(mipi_cmd_ville_qhd_pt_init);

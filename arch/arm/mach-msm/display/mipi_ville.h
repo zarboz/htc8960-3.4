@@ -4,7 +4,7 @@
 #include <linux/pwm.h>
 #include <linux/mfd/pm8xxx/pm8921.h>
 
-int mipi_samsung_device_register(struct msm_panel_info *pinfo,
+int mipi_ville_device_register(struct msm_panel_info *pinfo,
                                  u32 channel, u32 panel);
 
 #define PWM_MIN                   30

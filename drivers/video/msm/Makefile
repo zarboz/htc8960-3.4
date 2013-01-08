@@ -77,9 +77,6 @@ obj-$(CONFIG_FB_MSM_MIPI_DSI) += msm_mipi.o
 
 # MIPI manufacture
 obj-$(CONFIG_FB_MSM_MIPI_DSI_TOSHIBA) += mipi_toshiba.o
-ifeq ($(CONFIG_MACH_VILLE),y)
-obj-$(CONFIG_FB_MSM_MIPI_DSI_SAMSUNG) += mipi_samsung.o
-endif
 obj-$(CONFIG_FB_MSM_MIPI_DSI_NOVATEK) += mipi_novatek.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_ORISE) += mipi_orise.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_RENESAS) += mipi_renesas.o
@@ -123,9 +120,6 @@ obj-$(CONFIG_FB_MSM_MDDI_QUICKVX) += mddi_quickvx.o
 endif
 
 ifeq ($(CONFIG_FB_MSM_MIPI_PANEL_DETECT),y)
-ifeq ($(CONFIG_MACH_VILLE),y)
-obj-y += mipi_samsung_cmd_qhd_pt.o
-endif
 obj-y += mipi_toshiba_video_wvga_pt.o mipi_toshiba_video_wsvga_pt.o mipi_toshiba_video_wuxga.o
 obj-y += mipi_novatek_video_qhd_pt.o mipi_novatek_cmd_qhd_pt.o mipi_novatek_cmd_720p.o
 obj-y += mipi_orise_video_720p_pt.o mipi_orise_cmd_720p_pt.o
@@ -137,9 +131,6 @@ obj-y += mipi_chimei_wuxga.o
 obj-y += mipi_truly_video_wvga_pt.o
 obj-y += mipi_orise_cmd_qhd_pt.o
 else
-ifeq ($(CONFIG_MACH_VILLE),y)
-obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_VIDEO_QHD) += mipi_samsung_cmd_qhd_pt.o
-endif
 obj-$(CONFIG_FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT) += mipi_toshiba_video_wvga_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_TOSHIBA_VIDEO_WSVGA_PT) += mipi_toshiba_video_wsvga_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_TOSHIBA_VIDEO_WUXGA) += mipi_toshiba_video_wuxga.o
