@@ -21,6 +21,6 @@ obj-$(CONFIG_MACH_K2_PLC_CL) += board-k2-gpu.o
 obj-$(CONFIG_MACH_K2_WL) += board-k2-gpu.o
 obj-$(CONFIG_MACH_TC2) += board-tc2-gpu.o
 obj-$(CONFIG_MACH_OPERAUL) += board-operaul-gpu.o
-obj-$(CONFIG_MACH_ELITE) += board-elite-panel.o
+obj-$(CONFIG_MACH_ELITE) += mipi_elite.o mipi_elite_720p_pt.o board-elite-panel.o
 obj-$(CONFIG_MACH_JET) += board-jet-panel.o
 obj-$(CONFIG_MACH_JEWEL_DD) += board-jel_dd-panel.o
