@@ -1527,7 +1527,7 @@ static int mipi_elite_lcd_on(struct platform_device *pdev)
       else 
           PR_DISP_INFO("%s: panel_type is not supported!(%d)", __func__, panel_type);
     }
-  }
+
   mipi_set_tx_power_mode(0);
   mipi_lcd_on = 1;
 
