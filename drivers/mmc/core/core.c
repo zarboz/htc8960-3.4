@@ -380,12 +380,12 @@ static void mmc_wait_for_req_done(struct mmc_host *host,
 				  struct mmc_request *mrq)
 {
 	struct mmc_command *cmd;
-#if defined CONFIG_MACH_MONARUDO
+#if defined CONFIG_ARCH_MSM8960
 	unsigned long timeout = 0;
 #endif
 
 	while (1) {
-#if defined CONFIG_MACH_MONARUDO
+#if defined CONFIG_ARCH_MSM8960
 	if (host->index == 1) {
 		timeout = wait_for_completion_timeout(&mrq->completion, msecs_to_jiffies(2000));
 		if (!timeout) {
