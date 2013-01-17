@@ -15,6 +15,7 @@
 #define __SUBSYS_RESTART_H
 
 #include <linux/spinlock.h>
+#include <mach/peripheral-loader.h> // Compat include -- Flemmard
 
 #define SUBSYS_NAME_MAX_LENGTH 40
 
@@ -49,6 +50,11 @@ struct subsys_data {
 int get_restart_level(void);
 int subsystem_restart(const char *subsys_name);
 int ssr_register_subsystem(struct subsys_data *subsys);
+
+/* Compat defines -- Flemmard */
+#define subsystem_get pil_get
+#define subsystem_put pil_put
+
 #if defined(CONFIG_MSM8960_ONLY) || defined(CONFIG_MSM8930_ONLY)
 static inline void ssr_set_restart_reason(const char *reason) {}
 #else
