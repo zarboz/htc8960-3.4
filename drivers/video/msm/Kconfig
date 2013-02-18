@@ -1,4 +1,4 @@
-source "drivers/video/msm/sii9234/Kconfig"
+
 source "drivers/video/msm/vidc/Kconfig"
 
 config FB_MSM
@@ -14,11 +14,6 @@ config FB_MSM
 	  Support for MSM Framebuffer.
 
 if FB_MSM
-
-config FB_MSM_CABC
-	bool "Use CABC"
-	depends on FB_MSM
-	default n
 
 config FB_MSM_BACKLIGHT
 	bool "Support for backlight control"
@@ -131,11 +126,6 @@ config FB_MSM_OVERLAY
 	bool "MDP4 overlay support"
 	default n
 
-config MSM_AUTOBL_ENABLE
-	bool "ACL Service"
-	depends on FB_MSM
-	default n
-
 config FB_MSM_DTV
 	depends on FB_MSM_OVERLAY
 	bool
@@ -189,6 +179,11 @@ config FB_MSM_MIPI_DSI_TOSHIBA
 	select FB_MSM_MIPI_DSI
 	default n
 
+config FB_MSM_MIPI_DSI_LGIT
+	bool
+	select FB_MSM_MIPI_DSI
+	default n
+
 config FB_MSM_MIPI_DSI_RENESAS
 	bool
 	select FB_MSM_MIPI_DSI
@@ -216,6 +211,10 @@ config FB_MSM_MIPI_DSI_ORISE
         bool
         select FB_MSM_MIPI_DSI
         default n
+
+config FB_MSM_MIPI_DSI_NT35516
+	bool
+	select FB_MSM_MIPI_DSI
 
 config FB_MSM_MIPI_DSI_TC358764_DSI2LVDS
 	bool
@@ -308,12 +307,12 @@ config FB_MSM_LCDC_WXGA
 	select FB_MSM_LCDC_PANEL
 	default n
 
-config FB_MSM_LVDS_CHIMEI_WXGA
+config FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT
 	bool
-	select FB_MSM_LVDS
+	select FB_MSM_MIPI_DSI_LGIT
 	default n
 
-config FB_MSM_LVDS_FRC_FHD
+config FB_MSM_LVDS_CHIMEI_WXGA
 	bool
 	select FB_MSM_LVDS
 	default n
@@ -373,6 +372,15 @@ config FB_MSM_MIPI_NT35510_CMD_WVGA_PT
 	select FB_MSM_MIPI_DSI_NT35510
 	default n
 
+config FB_MSM_MIPI_NT35516_VIDEO_QHD_PT
+        bool
+        select FB_MSM_MIPI_DSI_NT35516
+        default n
+
+config FB_MSM_MIPI_NT35516_CMD_QHD_PT
+        bool
+        select FB_MSM_MIPI_DSI_NT35516
+        default n
 
 
 config FB_MSM_MIPI_CHIMEI_WXGA
@@ -549,6 +557,8 @@ config FB_MSM_MIPI_PANEL_DETECT
 	select FB_MSM_MIPI_NT35510_CMD_WVGA_PT
 	select FB_MSM_MIPI_ORISE_VIDEO_720P_PT
 	select FB_MSM_MIPI_ORISE_CMD_720P_PT
+	select FB_MSM_MIPI_NT35516_VIDEO_QHD_PT
+	select FB_MSM_MIPI_NT35516_CMD_QHD_PT
 	select FB_MSM_MIPI_SIMULATOR_VIDEO
 	select FB_MSM_MIPI_CHIMEI_WXGA
 	select FB_MSM_MIPI_CHIMEI_WUXGA
@@ -587,6 +597,8 @@ config FB_MSM_LCDC_MIPI_PANEL_AUTO_DETECT
 	select FB_MSM_MIPI_NOVATEK_CMD_QHD_PT
 	select FB_MSM_MIPI_NT35510_VIDEO_WVGA_PT
 	select FB_MSM_MIPI_NT35510_CMD_WVGA_PT
+	select FB_MSM_MIPI_NT35516_VIDEO_QHD_PT
+	select FM_MSM_MIPI_NT35516_CMD_QHD_PT
 	select FB_MSM_MIPI_SIMULATOR_VIDEO
 	---help---
 	  Support for LCDC + MIPI panel auto detect
@@ -642,6 +654,10 @@ config FB_MSM_MDDI_SHARP_QVGA_128x128
 	select FB_MSM_MDDI
 	---help---
 	  Support for MDDI Sharp QVGA (240x320) and 128x128 dual panel
+
+config FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT_PANEL
+	bool "MIPI LG Display WXGA PT Panel"
+	select FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT
 
 config FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT_PANEL
 	bool "MIPI Toshiba WVGA PT Panel"
@@ -699,6 +715,14 @@ config FB_MSM_MIPI_NT35510_CMD_WVGA_PT_PANEL
 	bool "MIPI NT35510 Command WVGA PT Panel"
 	select FB_MSM_MIPI_NT35510_CMD_WVGA_PT
 
+config FB_MSM_MIPI_NT35516_VIDEO_QHD_PT_PANEL
+        bool "MIPI NT35516 Video qHD PT Panel"
+        select FB_MSM_MIPI_NT35516_VIDEO_QHD_PT
+
+config FB_MSM_MIPI_NT35516_CMD_QHD_PT_PANEL
+        bool "MIPI NT35516 Command qHD PT Panel"
+        select FB_MSM_MIPI_NT35516_CMD_QHD_PT
+
 config FB_MSM_MIPI_SIMULATOR_VIDEO_PANEL
 	bool "MIPI Simulator Video Panel"
 	select FB_MSM_MIPI_SIMULATOR_VIDEO
@@ -720,6 +744,14 @@ config FB_MSM_PANEL_NONE
 	---help---
 	  This will disable LCD panel
 endchoice
+
+config LGIT_VIDEO_WXGA_CABC
+	bool "Content Adaptive Backlight Control on LGIT WXGA Panel"
+	default y
+	depends on FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT_PANEL
+	help
+	  Enable CABC(Content Apaptive Backlight Control) on LGIT Panel
+	  to reduce power consumption
 
 choice
 	prompt "Secondary LCD Panel"
@@ -805,14 +837,6 @@ config FB_MSM_HDMI_MSM_PANEL_DVI_SUPPORT
 	---help---
 	  Support for DVI mode for MSM HDMI 1080p Panel
 
-config FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT
-	depends on FB_MSM_HDMI_MSM_PANEL
-	bool "Use HDCP mode"
-	default y
-	---help---
-	  Support for HDCP mode for MSM HDMI 1080p Panel
-	  Choose to enable HDCP
-
 config FB_MSM_HDMI_MSM_PANEL_CEC_SUPPORT
 	depends on FB_MSM_HDMI_MSM_PANEL
 	bool "Enable CEC"
@@ -821,9 +845,18 @@ config FB_MSM_HDMI_MSM_PANEL_CEC_SUPPORT
 	  Support for HDMI CEC Feature
 	  Choose to enable CEC
 
-config FB_MSM_HDMI_MHL
+config FB_MSM_HDMI_MHL_9244
 	depends on FB_MSM_HDMI_MSM_PANEL
-	bool 'HDMI to MHL support'
+	bool 'SI_MHL 9244 support'
+	default n
+	---help---
+	  Support the HDMI to MHL conversion.
+	  MHL (Mobile High-Definition Link) technology
+	  uses USB connector to output HDMI content
+
+config FB_MSM_HDMI_MHL_8334
+	depends on FB_MSM_HDMI_MSM_PANEL
+	bool 'SI_MHL 8334 support '
 	default n
 	---help---
 	  Support the HDMI to MHL conversion.
@@ -931,13 +964,6 @@ config FB_MSM_EBI2_PANEL_DETECT
 	default n
 	---help---
 	  Support for EBI2 panel auto detect
-
-config MSM_ALT_DSI_ESCAPE_CLOCK
-	bool "Change DSI escape clock to byte clock"
-	default n
-	---help---
-	  Changing DSI escape clock source from PXO to byte clock to add
-	  more flexibility.
 
 if FB_MSM_MDSS
 	source "drivers/video/msm/mdss/Kconfig"

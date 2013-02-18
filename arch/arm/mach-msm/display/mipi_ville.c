@@ -1,19 +1,21 @@
-#include <mach/debug_display.h>
 #include <mach/panel_id.h>
 #include "../../../drivers/video/msm/msm_fb.h"
 #include "../../../drivers/video/msm/mipi_dsi.h"
 #include "mipi_ville.h"
 
+#ifndef VILLE_USE_CMDLISTS
 static struct dsi_buf ville_tx_buf;
 static struct dsi_buf ville_rx_buf;
+#endif
 static struct mipi_dsi_panel_platform_data *mipi_ville_pdata;
 static struct dsi_cmd_desc *display_on_cmds = NULL;
 static struct dsi_cmd_desc *display_off_cmds = NULL;
+static struct dsi_cmd_desc *cmd_on_cmds = NULL;
 static int display_on_cmds_count = 0;
 static int display_off_cmds_count = 0;
+static int cmd_on_cmds_count = 0;
 static int mipi_ville_lcd_init(void);
 static void mipi_ville_set_backlight(struct msm_fb_data_type *mfd);
-static int acl_enable = 0;
 static int cur_bl_level = 0;
 
 static char enter_sleep[2] = {0x10, 0x00}; /* DTYPE_DCS_WRITE */
@@ -315,24 +317,6 @@ static struct dsi_cmd_desc ville_cmd_backlight_cmds[] = {
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 0,  sizeof(vle_g1), vle_g1},
 };
 
-#if defined (CONFIG_MSM_AUTOBL_ENABLE)
-char acl_cutoff_40[] = {
-	0xC1, 0x47, 0x53, 0x13, 0x53, 0x00, 0x00, 0x01, 0xDF, 0x00,
-	0x00, 0x03, 0x1F, 0x00, 0x00, 0x00, 0x05, 0x0E, 0x0F, 0x0F,
-	0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x00
-};
-static char acl_on[] = {0xC0, 0x01};/* DTYPE_DCS_WRITE1 */
-static char acl_off[] = {0xC0, 0x00};/* DTYPE_DCS_WRITE1 */
-static struct dsi_cmd_desc ville_acl_on_cmd[] = {
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(acl_cutoff_40), acl_cutoff_40},
-	{DTYPE_DCS_WRITE1, 1, 0, 0, 0,  sizeof(acl_on), acl_on},
-};
-
-static struct dsi_cmd_desc ville_acl_off_cmd[] = {
-	{DTYPE_DCS_WRITE1, 1, 0, 0, 0, sizeof(acl_off), acl_off},
-};
-#endif
-
 #if defined (CONFIG_FB_MSM_MDP_ABL)
 static struct gamma_curvy smd_gamma_tbl = {
        .gamma_len = 33,
@@ -350,12 +334,35 @@ static struct gamma_curvy smd_gamma_tbl = {
 #endif
 
 extern int ville_panel_first_init;
-static struct dcs_cmd_req cmdreq;
+static int ville_send_display_cmds(struct dsi_cmd_desc *cmd, int cnt)
+{
+  int ret = 0;
+#ifdef VILLE_USE_CMDLISTS
+  struct dcs_cmd_req cmdreq;
+
+  cmdreq.cmds = cmd;
+  cmdreq.cmds_cnt = cnt;
+  cmdreq.flags = CMD_REQ_COMMIT;
+  cmdreq.rlen = 0;
+  cmdreq.cb = NULL;
+  
+  ret = mipi_dsi_cmdlist_put(&cmdreq);
+#else
+
+  MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x10000000);
+  ret = mipi_dsi_cmds_tx(&ville_tx_buf, cmd, cnt);
+  MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x14000000);
+#endif
+  if (ret < 0)
+    printk(KERN_ERR "[DISP] %s failed (%d)\n", __func__, ret);
+  return ret;
+}
 
 static int mipi_ville_lcd_on(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
 	struct mipi_panel_info *mipi;
+
 	printk(KERN_ERR  "[DISP] %s +++\n", __func__);
 	mfd = platform_get_drvdata(pdev);
 	if (!mfd)
@@ -365,32 +372,25 @@ static int mipi_ville_lcd_on(struct platform_device *pdev)
 
 	mipi  = &mfd->panel_info.mipi;
 
-	mipi_set_tx_power_mode(1);
+        ville_send_display_cmds(display_on_cmds, display_on_cmds_count);
+                
 	if (!ville_panel_first_init)
 	  {
-	    if (mipi->mode == DSI_CMD_MODE) {
-	      if (panel_type == PANEL_ID_VILLE_SAMSUNG_SG) {
-		printk(KERN_INFO "ville_lcd_on PANEL_ID_VILLE_SAMSUNG_SG\n");
-		mipi_dsi_cmds_tx(&ville_tx_buf, ville_cmd_on_cmds,
-				 ARRAY_SIZE(ville_cmd_on_cmds));
-	      } else if (panel_type == PANEL_ID_VILLE_SAMSUNG_SG_C2) {
-		printk(KERN_INFO "ville_lcd_on PANEL_ID_VILLE_SAMSUNG_SG_C2\n");
-		mipi_dsi_cmds_tx(&ville_tx_buf, ville_cmd_on_cmds_c2,
-				 ARRAY_SIZE(ville_cmd_on_cmds));
-	      } else if (panel_type == PANEL_ID_VILLE_AUO) {
-		printk(KERN_INFO "ville_lcd_on PANEL_ID_VILLE_AUO\n");
-		mipi_dsi_cmds_tx(&ville_tx_buf, auo_cmd_on_cmds,
-				 ARRAY_SIZE(auo_cmd_on_cmds));
-	      } else {
-		PR_DISP_ERR("%s: panel_type is not supported!(%d)\n", __func__, panel_type);
-		mipi_dsi_cmds_tx(&ville_tx_buf, ville_cmd_on_cmds,
-				 ARRAY_SIZE(ville_cmd_on_cmds));
-	      }
-	    }
-	  }
+            if (panel_type == PANEL_ID_VILLE_SAMSUNG_SG || panel_type == PANEL_ID_VILLE_SAMSUNG_SG_C2 || panel_type == PANEL_ID_VILLE_AUO) 
+              {
+                if (mipi->mode == DSI_CMD_MODE)
+                  {
+                    ville_send_display_cmds(cmd_on_cmds, cmd_on_cmds_count);
+                  }
+              } 
+            else 
+              {
+                printk(KERN_ERR "%s: panel_type is not supported!(%d)\n", __func__, panel_type);
+                return -EINVAL;
+              }
+          }
         printk(KERN_ERR  "[DISP] %s ---\n", __func__);
 	ville_panel_first_init = 0;
-	mipi_set_tx_power_mode(0);
 	return 0;
 }
 
@@ -405,35 +405,10 @@ static int mipi_ville_lcd_off(struct platform_device *pdev)
   if (mfd->key != MFD_KEY)
     return -EINVAL;
   
+  if (panel_type != PANEL_ID_NONE) 
+    ville_send_display_cmds(display_off_cmds, display_off_cmds_count);
+
   return 0;
-}
-
-static void mipi_ville_display_on(struct msm_fb_data_type *mfd)
-{
-  //	msleep(120);
-
-  cmdreq.cmds = display_on_cmds;
-  cmdreq.cmds_cnt = display_on_cmds_count;
-  cmdreq.flags = CMD_REQ_COMMIT;
-  cmdreq.rlen = 0;
-  cmdreq.cb = NULL;
-  
-  mipi_dsi_cmdlist_put(&cmdreq);
-  
-  printk(KERN_ERR "[DISP] %s\n", __func__);
-}
-
-static void mipi_ville_display_off(struct msm_fb_data_type *mfd)
-{
-  cmdreq.cmds = display_off_cmds;
-  cmdreq.cmds_cnt = display_off_cmds_count;
-  cmdreq.flags = CMD_REQ_COMMIT;
-  cmdreq.rlen = 0;
-  cmdreq.cb = NULL;
-  
-  mipi_dsi_cmdlist_put(&cmdreq);
-  
-  printk(KERN_ERR  "[DISP] %s ---\n", __func__);
 }
 
 static unsigned char ville_shrink_pwm(int val)
@@ -551,18 +526,9 @@ inline void mipi_dsi_set_backlight(struct msm_fb_data_type *mfd, int level)
 		ville_shrink_pwm(mfd->bl_level);
 
 	if (panel_type == PANEL_ID_VILLE_SAMSUNG_SG || panel_type == PANEL_ID_VILLE_SAMSUNG_SG_C2)
-	  {
-	    cmdreq.cmds = ville_cmd_backlight_cmds;
-	    cmdreq.cmds_cnt = ARRAY_SIZE(ville_cmd_backlight_cmds);
-	    cmdreq.flags = CMD_REQ_COMMIT;
-	    cmdreq.rlen = 0;
-	    cmdreq.cb = NULL;
-	    
-	    mipi_dsi_cmdlist_put(&cmdreq);
-	  }
+          ville_send_display_cmds(ville_cmd_backlight_cmds, ARRAY_SIZE(ville_cmd_backlight_cmds));
 
-	PR_DISP_DEBUG("%s+ bl_level=%d\n", __func__, mfd->bl_level);
-
+	printk(KERN_DEBUG "%s+ bl_level=%d\n", __func__, mfd->bl_level);
 	return;
 }
 
@@ -575,12 +541,23 @@ static void mipi_ville_set_backlight(struct msm_fb_data_type *mfd)
 
 static int __devinit mipi_ville_lcd_probe(struct platform_device *pdev)
 {
+  printk(KERN_ERR "%s: probe ++ %d\n", __func__, panel_type);
    if (panel_type == PANEL_ID_VILLE_SAMSUNG_SG || panel_type == PANEL_ID_VILLE_SAMSUNG_SG_C2)
     {
       display_on_cmds = ville_display_on_cmds;
       display_on_cmds_count = ARRAY_SIZE(ville_display_on_cmds);
       display_off_cmds = ville_display_off_cmds;
       display_off_cmds_count = ARRAY_SIZE(ville_display_off_cmds);
+      if (panel_type == PANEL_ID_VILLE_SAMSUNG_SG)
+        {
+          cmd_on_cmds = ville_cmd_on_cmds;
+          cmd_on_cmds_count = ARRAY_SIZE(ville_cmd_on_cmds);
+        }
+      else
+        {
+          cmd_on_cmds = ville_cmd_on_cmds_c2;
+          cmd_on_cmds_count = ARRAY_SIZE(ville_cmd_on_cmds_c2);
+        }
     }
   else if (panel_type == PANEL_ID_VILLE_AUO)
     {
@@ -588,67 +565,22 @@ static int __devinit mipi_ville_lcd_probe(struct platform_device *pdev)
       display_on_cmds_count = ARRAY_SIZE(auo_display_on_cmds);
       display_off_cmds = auo_display_off_cmds;
       display_off_cmds_count = ARRAY_SIZE(auo_display_off_cmds);
+      cmd_on_cmds = auo_cmd_on_cmds;
+      cmd_on_cmds_count = ARRAY_SIZE(auo_cmd_on_cmds);
     }
 
-  if (pdev->id == 0) {
-    mipi_ville_pdata = pdev->dev.platform_data;
-    return 0;
-  }
-
-  msm_fb_add_device(pdev);
-  return 0;
+   if (pdev->id == 0) 
+     {
+       mipi_ville_pdata = pdev->dev.platform_data;
+       return 0;
+     }
+   ville_panel_first_init = 1;
+   msm_fb_add_device(pdev);
+   return 0;
 }
-
-
-#if defined (CONFIG_MSM_AUTOBL_ENABLE)
-static int ville_ville_acl_enable(int on, struct msm_fb_data_type *mfd)
-{
-	static int first_time = 1;
-	static unsigned long last_autobkl_stat = 0, cur_autobkl_stat = 0;
-
-	/* if backlight is over 245, then disable acl */
-	if(cur_bl_level > 245)
-		cur_autobkl_stat = 8;
-	else
-		cur_autobkl_stat = on;
-
-	if(cur_autobkl_stat == last_autobkl_stat)
-		return 0;
-
-	last_autobkl_stat = cur_autobkl_stat;
-        //        mutex_lock(&mfd->dma->ov_mutex);
-	if (mfd->panel_info.type == MIPI_CMD_PANEL) {
-          printk(KERN_ERR "[DISP] FIXME 2\n");
-          //FIXME		mdp4_dsi_cmd_dma_busy_wait(mfd);
-          //FIXME		mdp4_dsi_blt_dmap_busy_wait(mfd);
-		mipi_dsi_mdp_busy_wait();
-	}
-
-	if (cur_autobkl_stat == 8 && !first_time) {
-		if (panel_type == PANEL_ID_VILLE_SAMSUNG_SG || panel_type == PANEL_ID_VILLE_SAMSUNG_SG_C2) {
-			mipi_dsi_cmds_tx(&ville_tx_buf, ville_acl_off_cmd,
-				ARRAY_SIZE(ville_acl_off_cmd));
-			acl_enable = 0;
-			PR_DISP_INFO("%s acl disable", __func__);
-		}
-	} else if (cur_autobkl_stat == 12) {
-	  if (panel_type == PANEL_ID_VILLE_SAMSUNG_SG || panel_type == PANEL_ID_VILLE_SAMSUNG_SG_C2) {
-			mipi_dsi_cmds_tx(&ville_tx_buf, ville_acl_on_cmd,
-				ARRAY_SIZE(ville_acl_on_cmd));
-			acl_enable = 1;
-			PR_DISP_INFO("%s acl enable", __func__);
-		}
-	}
-	first_time = 0;
-        //        mutex_unlock(&mfd->dma->ov_mutex);
-	return 0;
-}
-#endif
-
 
 static struct platform_driver this_driver = {
 	.probe  = mipi_ville_lcd_probe,
-        //	.shutdown = ville_lcd_shutdown,
 	.driver = {
 		.name   = "mipi_ville",
 	},
@@ -658,12 +590,6 @@ static struct msm_fb_panel_data ville_panel_data = {
 	.on		= mipi_ville_lcd_on,
 	.off		= mipi_ville_lcd_off,
 	.set_backlight = mipi_ville_set_backlight,
-	.display_on = mipi_ville_display_on,
-	.display_off = mipi_ville_display_off,
-        //        .power_ctrl = ville_display_power,
-#if defined (CONFIG_MSM_AUTOBL_ENABLE)
-        .autobl_enable = ville_ville_acl_enable
-#endif
 };
 
 static int ch_used[3];
@@ -694,13 +620,13 @@ int mipi_ville_device_register(struct msm_panel_info *pinfo,
 	ret = platform_device_add_data(pdev, &ville_panel_data,
 		sizeof(ville_panel_data));
 	if (ret) {
-		PR_DISP_ERR("%s: platform_device_add_data failed!\n", __func__);
+		printk(KERN_ERR "%s: platform_device_add_data failed!\n", __func__);
 		goto err_device_put;
 	}
 
 	ret = platform_device_add(pdev);
 	if (ret) {
-		PR_DISP_ERR("%s: platform_device_register failed!\n", __func__);
+		printk(KERN_ERR "%s: platform_device_register failed!\n", __func__);
 		goto err_device_put;
 	}
 
@@ -714,9 +640,11 @@ err_device_put:
 static int mipi_ville_lcd_init(void)
 {
   printk(KERN_ERR  "[DISP] %s +++\n", __func__);
+#ifndef VILLE_USE_CMDLISTS
   mipi_dsi_buf_alloc(&ville_tx_buf, DSI_BUF_SIZE);
   mipi_dsi_buf_alloc(&ville_rx_buf, DSI_BUF_SIZE);
-  
+#endif
+
   printk(KERN_ERR  "[DISP] %s ---\n", __func__);
   return platform_driver_register(&this_driver);
 }

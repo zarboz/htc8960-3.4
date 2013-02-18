@@ -73,7 +73,7 @@
 #include <linux/mfd/wcd9xxx/pdata.h>
 #endif
 #include <linux/ion.h>
-#include <mach/ion.h>
+#include <linux/msm_ion.h>
 
 #include <mach/msm_rtb.h>
 #include <mach/msm_cache_dump.h>
@@ -435,9 +435,18 @@ static struct ion_co_heap_pdata fw_co_ion_pdata = {
  * to each other.
  * Don't swap the order unless you know what you are doing!
  */
-static struct ion_platform_data ion_pdata = {
-	.nr = MSM_ION_HEAP_NUM,
-	.heaps = {
+/**
+ * These heaps are listed in the order they will be allocated. Due to
+ * video hardware restrictions and content protection the FW heap has to
+ * be allocated adjacent (below) the MM heap and the MFC heap has to be
+ * allocated after the MM heap to ensure MFC heap is not more than 256MB
+ * away from the base address of the FW heap.
+ * However, the order of FW heap and MM heap doesn't matter since these
+ * two heaps are taken care of by separate code to ensure they are adjacent
+ * to each other.
+ * Don't swap the order unless you know what you are doing!
+ */
+struct ion_platform_heap msm8960_heaps[] = {
 		{
 			.id	= ION_SYSTEM_HEAP_ID,
 			.type	= ION_HEAP_TYPE_SYSTEM,
@@ -500,7 +509,11 @@ static struct ion_platform_data ion_pdata = {
 			.extra_data = (void *) &co_ion_pdata,
 		},
 #endif
-	}
+};
+
+static struct ion_platform_data ion_pdata = {
+	.nr = MSM_ION_HEAP_NUM,
+	.heaps = msm8960_heaps,	
 };
 
 static struct platform_device ion_dev = {
@@ -2966,6 +2979,7 @@ static void __init msm8960_i2c_init(void)
 
 static void __init msm8960_gfx_init(void)
 {
+#if 0
 	uint32_t soc_platform_version = socinfo_get_version();
 	if (SOCINFO_VERSION_MAJOR(soc_platform_version) == 1) {
 		struct kgsl_device_platform_data *kgsl_3d0_pdata =
@@ -2974,6 +2988,7 @@ static void __init msm8960_gfx_init(void)
 		kgsl_3d0_pdata->pwrlevel[1].gpu_freq = 266667000;
 		kgsl_3d0_pdata->nap_allowed = false;
 	}
+#endif
 }
 
 #ifdef CONFIG_HTC_BATT_8960
@@ -3513,7 +3528,7 @@ static void __init ville_init(void)
 	msm_uart_gsbi_gpio_init();
 	msm_region_id_gpio_init();
 	platform_add_devices(ville_devices, ARRAY_SIZE(ville_devices));
-	ville_init_camera();
+        //	ville_init_camera();
 	ville_init_mmc();
 	//	acpuclk_init(&acpuclk_8960_soc_data);
 
