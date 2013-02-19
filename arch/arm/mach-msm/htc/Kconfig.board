@@ -1,0 +1,13 @@
+#
+# Inlcude the specific Kconfig file for HTC board
+#
+
+# VILLE
+source "arch/arm/mach-msm/htc/ville/Kconfig"
+# ELITE/EVITA
+source "arch/arm/mach-msm/htc/elite/Kconfig"
+# JET/JEWEL
+source "arch/arm/mach-msm/htc/jet/Kconfig"
+
+config MACH_HTC_DUMMY
+	bool "NONE (No device)"

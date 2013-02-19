@@ -1,6 +1,6 @@
 CFLAGS_scm.o :=$(call as-instr,.arch_extension sec,-DREQUIRES_SEC=1)
 
-obj-y += io.o dma.o memory.o emmc_partitions.o
+obj-y += io.o dma.o memory.o #emmc_partitions.o
 ifndef CONFIG_ARM_ARCH_TIMER
 obj-y += timer.o
 endif
@@ -23,7 +23,7 @@ endif
 endif
 
 obj-y += acpuclock.o
-obj-y += radio_feedback.o
+#obj-y += radio_feedback.o
 obj-$(CONFIG_ARCH_MSM7X27) += acpuclock-7627.o clock-pll.o
 obj-$(CONFIG_ARCH_MSM_SCORPION) += pmu.o
 obj-$(CONFIG_ARCH_MSM_SCORPIONMP) += perf_event_msm_l2.o
@@ -58,7 +58,7 @@ obj-$(CONFIG_MSM_JTAG) += jtag.o
 msm-etm-objs := etm.o
 obj-$(CONFIG_MSM_ETM) += msm-etm.o
 
-obj-$(CONFIG_MSM_SMD) += htc_port_list.o
+#obj-$(CONFIG_MSM_SMD) += htc_port_list.o
 
 quiet_cmd_mkrpcsym = MKCAP   $@
       cmd_mkrpcsym = $(PERL) $(srctree)/$(src)/mkrpcsym.pl $< $@
@@ -67,7 +67,7 @@ target += smd_rpc_sym.c
 $(obj)/smd_rpc_sym.c: $(src)/smd_rpc_sym $(src)/mkrpcsym.pl
 	$(call if_changed,mkrpcsym)
 
-obj-$(CONFIG_MSM_SCM) += scm.o scm-boot.o htc_simlock.o htc_sdservice.o htc_drm.o htc_debug.o
+obj-$(CONFIG_MSM_SCM) += scm.o scm-boot.o 
 obj-$(CONFIG_MSM_SECURE_IO) += scm-io.o
 obj-$(CONFIG_MSM_PIL) += peripheral-loader.o
 obj-$(CONFIG_MSM_PIL) += scm-pas.o
@@ -100,7 +100,7 @@ obj-$(CONFIG_MSM_IPC_LOGGING) += ipc_logging_debug.o
 endif
 obj-$(CONFIG_MSM_SMD) += smd.o smd_debug.o remote_spinlock.o smd_private.o
 obj-y += socinfo.o
-obj-y += htc_sysinfo.o
+#obj-y += htc_sysinfo.o
 ifndef CONFIG_ARCH_MSM9615
 ifndef CONFIG_ARCH_APQ8064
 ifndef CONFIG_ARCH_MSM8960
@@ -272,10 +272,11 @@ obj-$(CONFIG_MACH_MSM7X25_SURF) += board-msm7x27.o devices-msm7x25.o
 obj-$(CONFIG_MACH_MSM7X25_FFA) += board-msm7x27.o devices-msm7x25.o
 obj-$(CONFIG_ARCH_MSM8960) += clock-local.o clock-dss-8960.o clock-8960.o clock-rpm.o clock-pll.o
 obj-$(CONFIG_ARCH_MSM8960) += footswitch-8x60.o
-obj-$(CONFIG_ARCH_MSM8960) += acpuclock-8960.o
+obj-$(CONFIG_ARCH_MSM8960) += acpuclock-8960.o acpuclock-krait.o
 obj-$(CONFIG_ARCH_MSM8960) += memory_topology.o
 obj-$(CONFIG_ARCH_MSM8960) += saw-regulator.o
-obj-$(CONFIG_ARCH_MSM8960) += devices-8960.o htc_wifi_nvs.o devices_htc.o htc_awb_cal.o
+obj-$(CONFIG_ARCH_MSM8960) += devices-8960.o #devices_htc.o
+#obj-$(CONFIG_ARCH_MSM8960) += htc_wifi_nvs.o htc_awb_cal.o
 obj-$(CONFIG_ARCH_MSM8930) += devices_htc.o
 obj-$(CONFIG_ARCH_APQ8064) += devices-8960.o devices-8064.o devices_htc.o htc_awb_cal.o
 board-8960-all-objs += board-8960.o board-8960-camera.o board-8960-display.o board-8960-pmic.o board-8960-storage.o board-8960-gpiomux.o
@@ -316,22 +317,11 @@ obj-$(CONFIG_MACH_MONARUDO) += board-monarudo-all.o board-monarudo-regulator.o
 obj-$(CONFIG_MACH_DELUXE_J) += board-deluxe_j-all.o board-deluxe_j-regulator.o
 obj-$(CONFIG_MACH_DELUXE_U) += board-deluxe_u-all.o board-deluxe_u-regulator.o
 
+#obj-y += htc_util.o
 obj-$(CONFIG_MACH_MONARUDO) += htc_util.o
 obj-$(CONFIG_MACH_DELUXE_J) += htc_util.o
 obj-$(CONFIG_MACH_DELUXE_J) += ADP5585_ioextender.o
 obj-$(CONFIG_MACH_DELUXE_U) += htc_util.o
-obj-$(CONFIG_MACH_ELITE) += board-elite.o board-elite-regulator.o board-elite-gpiomux.o board-elite-storage.o board-elite-audio.o board-elite-camera.o board-elite-pmic.o
-obj-$(CONFIG_MACH_ELITE) += board-elite-keypad.o
-obj-$(CONFIG_MACH_ELITE) += htc_bdaddress.o
-obj-$(CONFIG_MACH_ELITE) += htc_util.o
-obj-$(CONFIG_MACH_VILLE) += board-ville.o board-ville-regulator.o board-ville-gpiomux.o board-ville-storage.o board-ville-audio.o board-ville-pmic.o
-obj-$(CONFIG_MACH_VILLE) += board-ville-keypad.o
-obj-$(CONFIG_MACH_VILLE) += htc_bdaddress.o
-obj-$(CONFIG_MACH_VILLE) += htc_util.o
-obj-$(CONFIG_MACH_JET) += board-jet.o board-jet-regulator.o board-jet-gpiomux.o board-jet-storage.o board-jet-audio.o board-jet-camera.o board-jet-pmic.o
-obj-$(CONFIG_MACH_JET) += board-jet-keypad.o
-obj-$(CONFIG_MACH_JET) += htc_bdaddress.o
-obj-$(CONFIG_MACH_JET) += htc_util.o
 obj-$(CONFIG_MACH_JEWEL_DD) += board-jel_dd.o board-jel_dd-regulator.o board-jel_dd-gpiomux.o board-jel_dd-storage.o board-jel_dd-audio.o board-jel_dd-camera.o
 obj-$(CONFIG_MACH_JEWEL_DD) += board-jel_dd-keypad.o
 obj-$(CONFIG_MACH_JEWEL_DD) += htc_bdaddress.o
@@ -359,6 +349,8 @@ obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-keypad.o board-sapphire-panel.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-mmc.o board-sapphire-wifi.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-rfkill.o msm_vibrator.o
 
+obj-$(CONFIG_MACH_HTC) += htc/
+
 obj-$(CONFIG_MACH_VILLEC2) += board-villec2.o devices_htc.o
 #obj-$(CONFIG_MACH_VILLEC2) += board-villec2-keypad.o
 #obj-$(CONFIG_MACH_VILLEC2) += board-villec2-audio.o
@@ -374,15 +366,15 @@ CFLAGS_board-9615.o += -Idrivers/usb/gadget
 obj-$(CONFIG_ARCH_FSM9XXX) += board-fsm9xxx.o
 
 obj-$(CONFIG_TROUT_BATTCHG) += htc_battery.o
-obj-$(CONFIG_HTC_BATT_CORE) += htc_battery_core.o
-obj-$(CONFIG_HTC_BATT_8960) += htc_battery_8960.o htc_battery_cell.o
+#obj-$(CONFIG_HTC_BATT_CORE) += htc_battery_core.o
+#obj-$(CONFIG_HTC_BATT_8960) += htc_battery_8960.o htc_battery_cell.o
 
 obj-$(CONFIG_HTC_PWRSINK) += htc_pwrsink.o
-obj-$(CONFIG_HTC_HEADSET_MGR) += htc_headset_mgr.o
-obj-$(CONFIG_HTC_HEADSET_PMIC) += htc_headset_pmic.o
-obj-$(CONFIG_HTC_HEADSET_GPIO) += htc_headset_gpio.o
-obj-$(CONFIG_HTC_HEADSET_ONE_WIRE) += htc_headset_one_wire.o
-obj-$(CONFIG_HTC_HEADSET) += htc_headset.o
+#obj-$(CONFIG_HTC_HEADSET_MGR) += htc_headset_mgr.o
+#obj-$(CONFIG_HTC_HEADSET_PMIC) += htc_headset_pmic.o
+#obj-$(CONFIG_HTC_HEADSET_GPIO) += htc_headset_gpio.o
+#obj-$(CONFIG_HTC_HEADSET_ONE_WIRE) += htc_headset_one_wire.o
+#obj-$(CONFIG_HTC_HEADSET) += htc_headset.o
 obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client.o
 obj-$(CONFIG_MSM_SDIO_SMEM) += sdio_smem.o
 obj-$(CONFIG_MSM_RPM) += rpm.o
@@ -436,7 +428,7 @@ ifdef CONFIG_ARCH_APQ8064
 else
 	obj-$(CONFIG_MSM_NATIVE_RESTART) += restart.o
 endif
-obj-$(CONFIG_MSM_NATIVE_RESTART) += htc_restart_handler.o
+#obj-$(CONFIG_MSM_NATIVE_RESTART) += htc_restart_handler.o
 
 obj-$(CONFIG_MSM_PROC_COMM_REGULATOR) += proccomm-regulator.o
 ifdef CONFIG_MSM_PROC_COMM_REGULATOR
@@ -461,4 +453,4 @@ obj-$(CONFIG_PERFLOCK) += perflock.o
 obj-y += htc_ramdump.o
 
 obj-y += htc_monitor.o
-obj-y += display/
+#obj-y += display/
