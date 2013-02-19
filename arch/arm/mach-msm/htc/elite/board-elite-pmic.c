@@ -325,7 +325,7 @@ static struct pm8xxx_led_platform_data pm8xxx_leds_pdata = {
 };
 
 static struct pm8xxx_ccadc_platform_data pm8xxx_ccadc_pdata = {
-    .r_sense_uohm		= 10000,
+    .r_sense		= 10,
 };
 
 static struct pm8xxx_adc_amux pm8xxx_adc_channels_data[] = {

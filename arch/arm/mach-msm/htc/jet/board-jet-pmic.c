@@ -320,7 +320,7 @@ static struct pm8xxx_vibrator_platform_data pm8xxx_vib_pdata = {
 };
 
 static struct pm8xxx_ccadc_platform_data pm8xxx_ccadc_pdata = {
-    .r_sense_uohm		= 10,
+    .r_sense		= 10,
 };
 
 static struct pm8xxx_adc_amux pm8xxx_adc_channels_data[] = {

@@ -2742,10 +2742,8 @@ static struct platform_device msm_tsens_device = {
 static struct msm_thermal_data msm_thermal_pdata = {
 	.sensor_id = 0,
 	.poll_ms = 1000,
-	.limit_temp_degC = 60,
-	.temp_hysteresis_degC = 10,
-        //	.limit_freq = 918000,
-        .freq_step = 2,
+	.limit_temp = 60,
+	.temp_hysteresis = 10,
 };
 
 #ifdef CONFIG_MSM_FAKE_BATTERY
@@ -2786,6 +2784,9 @@ static struct platform_device *common_devices[] __initdata = {
 #endif
 	&msm8960_device_ssbi_pmic,
 	&msm_slim_ctrl,
+        &msm_kgsl_3d0,
+        &msm_kgsl_2d0,
+        &msm_kgsl_2d1,
 	&msm_device_wcnss_wlan,
 #if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
 		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
@@ -3384,7 +3385,6 @@ static void __init jet_init(void)
 		pr_err("meminfo_init() failed!\n");
 
         htc_add_ramconsole_devices();
-        platform_device_register(&msm_gpio_device);
 
 	msm_tsens_early_init(&msm_tsens_pdata);
 	msm_thermal_init(&msm_thermal_pdata);
@@ -3452,7 +3452,7 @@ static void __init jet_init(void)
 	register_i2c_devices();
 	/* msm8960_wcnss_init(); */
 	jet_init_fb();
-        jet_init_gpu();
+        //        jet_init_gpu();
 	//	msm_fb_add_devices();
 	slim_register_board_info(msm_slim_devices,
 		ARRAY_SIZE(msm_slim_devices));

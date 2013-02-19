@@ -2526,8 +2526,6 @@ static struct msm_thermal_data msm_thermal_pdata = {
 	.poll_ms = 1000,
 	.limit_temp = 60,
 	.temp_hysteresis = 10,
-        //	.limit_freq = 918000,
-        //        .freq_step = 2,
 };
 
 #ifdef CONFIG_MSM_FAKE_BATTERY
@@ -3166,7 +3164,6 @@ static void __init ville_init(void)
 		pr_err("meminfo_init() failed!\n");
 
         htc_add_ramconsole_devices();
-        //        platform_device_register(&msm8960_gpio_device);
 
         msm_tsens_early_init(&msm_tsens_pdata);
 	msm_thermal_init(&msm_thermal_pdata);
