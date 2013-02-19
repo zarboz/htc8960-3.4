@@ -4,6 +4,7 @@ subdir-ccflags-$(CONFIG_ARCH_MSM) += -Iarch/arm/mach-msm
 
 obj-$(CONFIG_MACH_HTC) += devices_htc.o  \
 			htc_bdaddress.o \
+			htc_util.o \
 			emmc_partitions.o \
 			radio_feedback.o \
 			htc_sysinfo.o \
