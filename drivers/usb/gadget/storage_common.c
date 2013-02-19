@@ -162,17 +162,6 @@ struct interrupt_data {
 /* Length of a SCSI Command Data Block */
 #define MAX_COMMAND_SIZE	16
 
-#ifdef CONFIG_PASCAL_DETECT
-#define SC_PASCAL_MODE		0xff
-#endif
-#ifdef CONFIG_LISMO
-/* [ADD START] 2012/01/17 KDDI : Android ICS */
-/* [ADD START] 2011/04/15 KDDI : define vendor command code */
-#define SC_VENDOR_START			0xe4
-#define SC_VENDOR_END			0xef
-/* [ADD END] 2011/04/15 KDDI : define vendor command code */
-/* [ADD END] 2012/01/17 KDDI : Android ICS */
-#endif
 /* SCSI Sense Key/Additional Sense Code/ASC Qualifier values */
 #define SS_NO_SENSE				0
 #define SS_COMMUNICATION_FAILURE		0x040800
@@ -193,50 +182,6 @@ struct interrupt_data {
 #define ASC(x)		((u8) ((x) >> 8))
 #define ASCQ(x)		((u8) (x))
 
-#ifdef CONFIG_LISMO
-/* [ADD START] 2012/01/17 KDDI : Android ICS */
-/* [ADD START] 2011/04/15 KDDI : define count of vendor command */
-#define VENDOR_CMD_NR	(SC_VENDOR_END - SC_VENDOR_START + 1)
-/* [ADD END] 2011/04/15 KDDI : define count of vendor command */
-/* [ADD START] 2011/05/18 KDDI : define inquiry command init response */
-#define INQUIRY_VENDOR_INIT	"LISMOSC1"
-/* [ADD END] 2011/05/18 KDDI : define inquiry command init response */
-
-/* [ADD START] 2011/05/26 KDDI : inquiry respons [Vendor specific]length)*/
-#define INQUIRY_VENDOR_SPECIFIC_SIZE 20 /* Size of InquiryResponse VendorSpecific */
-/* [ADD END] 2011/05/26 KDDI : inquiry respons [Vendor specific]length)*/
-
-/* [ADD START] 2011/08/23 KDDI : buffer size alloc at __init() */
-#define ALLOC_INI_SIZE  0x101000
-#define ALLOC_CMD_CNT   1
-/* [ADD ENDT] 2011/08/23 KDDI : buffer size alloc at __init() */
-/* [ADD END] 2012/01/17 KDDI : Android ICS */
-
-/*-------------------------------------------------------------------------*/
-
-/* [ADD START] 2012/01/17 KDDI : Android ICS */
-/* [ADD START] 2011/04/15 KDDI : etc define for vendor command */
-struct op_desc {
-	struct device	dev;
-	unsigned long	flags;
-/* flag symbols are bit numbers */
-#define FLAG_IS_READ	0
-#define FLAG_IS_WRITE	1
-#define FLAG_EXPORT	2	/* protected by sysfs_lock */
-
-	char			*buffer;
-	size_t			len;
-	struct bin_attribute	dev_bin_attr_buffer;
-	unsigned long 		update;
-	struct work_struct	work;
-	struct sysfs_dirent	*value_sd;
-};
-static void op_release(struct device *dev);
-
-static DEFINE_MUTEX(sysfs_lock);
-/* [ADD END] 2011/04/15 KDDI : etc define for vendor command */
-/* [ADD END] 2012/01/17 KDDI : Android ICS */
-#endif
 
 /*-------------------------------------------------------------------------*/
 
@@ -273,21 +218,6 @@ struct fsg_lun {
 	} perf;
 
 #endif
-#ifdef CONFIG_LISMO
-/* [ADD START] 2012/01/17 KDDI : Android ICS */
-/* [ADD START] 2011/04/15 KDDI : add define to device struct */
-	struct op_desc *op_desc[VENDOR_CMD_NR];
-
-/* [CHANGE START] 2011/05/26 KDDI : add Vendor specific length */
-	/* Vendor specific and NUL byte */
-	char inquiry_vendor[INQUIRY_VENDOR_SPECIFIC_SIZE + 1];
-/* [CHANGE END] 2011/05/26 KDDI : add Vendor specific length */
-/* [ADD END] 2011/04/15 KDDI : add define to device struct */
-/* [ADD START] 2011/08/23 KDDI : add buffer malloc table */
-	char   *reserve_buf[VENDOR_CMD_NR];
-/* [ADD ENDT] 2011/08/23 KDDI : add buffer malloc table */
-/* [ADD END] 2012/01/17 KDDI : Android ICS */
-#endif
 };
 
 #define fsg_lun_is_open(curlun)	((curlun)->filp != NULL)
@@ -296,17 +226,6 @@ static struct fsg_lun *fsg_lun_from_dev(struct device *dev)
 {
 	return container_of(dev, struct fsg_lun, dev);
 }
-
-#ifdef CONFIG_LISMO
-/* [ADD START] 2012/01/17 KDDI : Android ICS */
-/* [ADD START] 2011/04/15 KDDI : define container(adress_get) */
-static struct op_desc *dev_to_desc(struct device *dev)
-{
-	return container_of(dev, struct op_desc, dev);
-}
-/* [ADD END] 2011/04/15 KDDI : define container(adress_get)*/
-/* [ADD END] 2012/01/17 KDDI : Android ICS */
-#endif
 
 
 /* Big enough to hold our biggest descriptor */

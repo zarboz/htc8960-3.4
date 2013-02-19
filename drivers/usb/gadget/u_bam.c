@@ -24,6 +24,7 @@
 #include <linux/termios.h>
 
 #include <mach/usb_gadget_xport.h>
+#include <linux/usb/msm_hsusb.h>
 #include <mach/usb_bam.h>
 
 #include "u_rmnet.h"
@@ -97,8 +98,8 @@ struct bam_ch_info {
 	struct usb_request	*rx_req;
 	struct usb_request	*tx_req;
 
-	u8					src_pipe_idx;
-	u8					dst_pipe_idx;
+	u32					src_pipe_idx;
+	u32					dst_pipe_idx;
 	u8					connection_idx;
 
 	/* stats */

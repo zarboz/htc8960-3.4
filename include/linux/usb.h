@@ -22,10 +22,6 @@
 #include <linux/mutex.h>	/* for struct mutex */
 #include <linux/pm_runtime.h>	/* for runtime PM */
 
-/* ++SSD_RIL */
-#define HTC_PM_DBG
-/* --SSD_RIL */
-
 struct usb_device;
 struct usb_driver;
 struct wusb_dev;
@@ -189,14 +185,6 @@ struct usb_interface {
 	struct device *usb_dev;
 	atomic_t pm_usage_cnt;		/* usage counter for autosuspend */
 	struct work_struct reset_ws;	/* for resets in atomic context */
-
-	/* ++SSD_RIL */
-#ifdef HTC_PM_DBG
-	unsigned long last_busy_jiffies;
-	unsigned int busy_cnt;
-	unsigned int data_busy_cnt;
-#endif
-	/* --SSD_RIL */
 };
 #define	to_usb_interface(d) container_of(d, struct usb_interface, dev)
 
@@ -380,6 +368,15 @@ struct usb_bus {
 	struct mon_bus *mon_bus;	/* non-null when associated */
 	int monitored;			/* non-zero when monitored */
 #endif
+	unsigned skip_resume:1;		/* All USB devices are brought into full
+					 * power state after system resume. It
+					 * is desirable for some buses to keep
+					 * their devices in suspend state even
+					 * after system resume. The devices
+					 * are resumed later when a remote
+					 * wakeup is detected or an interface
+					 * driver starts I/O.
+					 */
 };
 
 /* ----------------------------------------------------------------------- */
@@ -560,12 +557,6 @@ struct usb_device {
 	struct wusb_dev *wusb_dev;
 	int slot_id;
 	enum usb_device_removable removable;
-	/* ++SSD_RIL */
-#ifdef HTC_PM_DBG
-	unsigned auto_suspend_timer_set:1;
-	unsigned is_suspend:1;
-#endif
-	/* --SSD_RIL */
 };
 #define	to_usb_device(d) container_of(d, struct usb_device, dev)
 
@@ -605,18 +596,7 @@ static inline void usb_mark_last_busy(struct usb_device *udev)
 {
 	pm_runtime_mark_last_busy(&udev->dev);
 }
-/* ++SSD_RIL */
-#ifdef HTC_PM_DBG
-static inline void usb_mark_intf_last_busy(struct usb_interface *intf, bool is_data)
-{
-	ACCESS_ONCE(intf->last_busy_jiffies) = jiffies;
-	if (is_data)
-		intf->data_busy_cnt++;
-	else
-		intf->busy_cnt++;
-}
-#endif
-/* --SSD_RIL */
+
 #else
 
 static inline int usb_enable_autosuspend(struct usb_device *udev)
@@ -641,12 +621,6 @@ static inline void usb_autopm_put_interface_no_suspend(
 { }
 static inline void usb_mark_last_busy(struct usb_device *udev)
 { }
-/* ++SSD_RIL */
-#ifdef HTC_PM_DBG
-static inline void usb_mark_intf_last_busy(struct usb_interface *intf, bool is_data)
-{ }
-#endif
-/* --SSD_RIL */
 #endif
 
 /*-------------------------------------------------------------------------*/
@@ -848,37 +822,6 @@ static inline int usb_make_path(struct usb_device *dev, char *buf, size_t size)
 	.bInterfaceClass = (cl), \
 	.bInterfaceSubClass = (sc), \
 	.bInterfaceProtocol = (pr)
-
-/**
- * USB_VENDOR_AND_INTERFACE_INFO - describe a specific usb vendor with a class of usb interfaces
- * @vend: the 16 bit USB Vendor ID
- * @cl: bInterfaceClass value
- * @sc: bInterfaceSubClass value
- * @pr: bInterfaceProtocol value
- *
- * This macro is used to create a struct usb_device_id that matches a
- * specific vendor with a specific class of interfaces.
- *
- * This is especially useful when explicitly matching devices that have
- * vendor specific bDeviceClass values, but standards-compliant interfaces.
- */
-#define USB_VENDOR_AND_INTERFACE_INFO(vend, cl, sc, pr) \
-	.match_flags = USB_DEVICE_ID_MATCH_INT_INFO \
-		| USB_DEVICE_ID_MATCH_VENDOR, \
-	.idVendor = (vend), \
-	.bInterfaceClass = (cl), \
-	.bInterfaceSubClass = (sc), \
-	.bInterfaceProtocol = (pr)
-
-/* compare device & interface class */
-#define USB_DEVICE_CLASS_INFO(dcl) \
-	.match_flags = USB_DEVICE_ID_MATCH_DEV_CLASS, \
-	.bDeviceClass = (dcl) \
-
-#define USB_INTERFACE_CLASS_INFO(icl) \
-	.match_flags = USB_DEVICE_ID_MATCH_INT_CLASS, \
-	.bInterfaceClass = (icl) \
-
 
 /* ----------------------------------------------------------------------- */
 
@@ -1476,7 +1419,6 @@ extern int usb_unlink_urb(struct urb *urb);
 extern void usb_kill_urb(struct urb *urb);
 extern void usb_poison_urb(struct urb *urb);
 extern void usb_unpoison_urb(struct urb *urb);
-extern void usb_block_urb(struct urb *urb);
 extern void usb_kill_anchored_urbs(struct usb_anchor *anchor);
 extern void usb_poison_anchored_urbs(struct usb_anchor *anchor);
 extern void usb_unpoison_anchored_urbs(struct usb_anchor *anchor);
@@ -1488,8 +1430,6 @@ extern int usb_wait_anchor_empty_timeout(struct usb_anchor *anchor,
 extern struct urb *usb_get_from_anchor(struct usb_anchor *anchor);
 extern void usb_scuttle_anchored_urbs(struct usb_anchor *anchor);
 extern int usb_anchor_empty(struct usb_anchor *anchor);
-
-#define usb_unblock_urb	usb_unpoison_urb
 
 /**
  * usb_urb_dir_in - check if an URB describes an IN transfer

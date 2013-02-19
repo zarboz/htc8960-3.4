@@ -20,9 +20,6 @@
 
 #include <linux/usb/composite.h>
 #include <asm/unaligned.h>
-/*USB-IF failed because mute uevent if switching usb functions without vbus changes.
-For this case, driver needs to send uevent to notfiy mtp service*/
-static bool is_mtp_enabled;
 
 /*
  * The code in this file is utility code, used to build a gadget driver
@@ -36,8 +33,6 @@ static bool is_mtp_enabled;
 
 static struct usb_composite_driver *composite;
 static int (*composite_gadget_bind)(struct usb_composite_dev *cdev);
-static void mtp_update_mode(int _mac_mtp_mode);
-static void fsg_update_mode(int _linux_fsg_mode);
 
 /* Some systems will need runtime overrides for the  product identifiers
  * published in the device descriptor, either numbers or strings or both.
@@ -70,29 +65,6 @@ MODULE_PARM_DESC(iSerialNumber, "SerialNumber string");
 
 static char composite_manufacturer[50];
 
-static void composite_disconnect(struct usb_gadget *gadget);
-static int usb_autobot_mode(void);
-int board_mfg_mode(void);
-void usb_composite_force_reset(struct usb_composite_dev *cdev);
-#define REQUEST_RESET_DELAYED msecs_to_jiffies(100)
-static void composite_request_reset(struct work_struct *w)
-{
-	struct usb_composite_dev *cdev = container_of(
-			(struct delayed_work *)w,
-			struct usb_composite_dev, request_reset);
-	if (cdev) {
-		if (usb_autobot_mode() || board_mfg_mode())
-			return;
-
-		INFO(cdev, "%s\n", __func__);
-		if (os_type == OS_LINUX)
-			fsg_update_mode(1);
-		else
-			fsg_update_mode(0);
-		composite_disconnect(cdev->gadget);
-		usb_composite_force_reset(cdev);
-	}
-}
 /*-------------------------------------------------------------------------*/
 /**
  * next_ep_desc() - advance to the next EP descriptor
@@ -217,23 +189,6 @@ ep_found:
 		}
 	}
 	return 0;
-}
-
-void usb_composite_force_reset(struct usb_composite_dev *cdev)
-{
-	unsigned long			flags;
-
-	spin_lock_irqsave(&cdev->lock, flags);
-	/* force reenumeration */
-	if (cdev && cdev->gadget && cdev->gadget->speed != USB_SPEED_UNKNOWN) {
-		spin_unlock_irqrestore(&cdev->lock, flags);
-
-		usb_gadget_disconnect(cdev->gadget);
-		msleep(500);
-		usb_gadget_connect(cdev->gadget);
-	} else {
-		spin_unlock_irqrestore(&cdev->lock, flags);
-	}
 }
 
 /**
@@ -387,7 +342,6 @@ int usb_interface_id(struct usb_configuration *config,
 {
 	unsigned id = config->next_interface_id;
 
-	printk("===========interface_id %d %s\n",id, function->name);
 	if (id < MAX_CONFIG_INTERFACES) {
 		config->interface[id] = function;
 		config->next_interface_id = id + 1;
@@ -1182,23 +1136,6 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 				break;
 			/* FALLTHROUGH */
 		case USB_DT_CONFIG:
-			if (w_length == 4) {
-				pr_info("%s: OS_MAC\n", __func__);
-				os_type = OS_MAC;
-				mtp_update_mode(1);
-			} else if (w_length == 255) {
-				pr_info("%s: OS_WINDOWS\n", __func__);
-				os_type = OS_WINDOWS;
-			} else if (w_length == 9 && os_type != OS_WINDOWS) {
-				pr_info("%s: OS_LINUX\n", __func__);
-				if (os_type != OS_LINUX) {
-					os_type = OS_LINUX;
-					schedule_delayed_work(
-						&cdev->request_reset,
-						REQUEST_RESET_DELAYED);
-				}
-			}
-
 			value = config_desc(cdev, w_value);
 			if (value >= 0)
 				value = min(w_length, (u16) value);
@@ -1427,10 +1364,6 @@ static void composite_disconnect(struct usb_gadget *gadget)
 		reset_config(cdev);
 	if (composite->disconnect)
 		composite->disconnect(cdev);
-	if (cdev->delayed_status != 0) {
-		WARN(cdev, "%s: delayed_status is not 0 in disconnect status\n", __func__);
-		cdev->delayed_status = 0;
-	}
 	spin_unlock_irqrestore(&cdev->lock, flags);
 }
 
@@ -1520,7 +1453,6 @@ static int composite_bind(struct usb_gadget *gadget)
 	cdev->bufsiz = USB_BUFSIZ;
 	cdev->driver = composite;
 
-	INIT_DELAYED_WORK(&cdev->request_reset, composite_request_reset);
 	/*
 	 * As per USB compliance update, a device that is actively drawing
 	 * more than 100mA from USB must report itself as bus-powered in
@@ -1693,7 +1625,7 @@ int usb_composite_probe(struct usb_composite_driver *driver,
 {
 	int retval;
 
-	if (!driver || !driver->dev || !bind || composite)
+	if (!driver || !driver->dev || !bind)
 		return -EINVAL;
 
 	if (!driver->name)

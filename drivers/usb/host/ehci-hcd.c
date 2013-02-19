@@ -684,19 +684,14 @@ static int ehci_init(struct usb_hcd *hcd)
 	hw = ehci->async->hw;
 	hw->hw_next = QH_NEXT(ehci, ehci->async->qh_dma);
 	hw->hw_info1 = cpu_to_hc32(ehci, QH_HEAD);
-#if defined(CONFIG_PPC_PS3)
 	hw->hw_info1 |= cpu_to_hc32(ehci, (1 << 7));	/* I = 1 */
-#endif
 	hw->hw_token = cpu_to_hc32(ehci, QTD_STS_HALT);
 	hw->hw_qtd_next = EHCI_LIST_END(ehci);
 	ehci->async->qh_state = QH_STATE_LINKED;
 	hw->hw_alt_next = QTD_NEXT(ehci, ehci->async->dummy->qtd_dma);
 
 	/* clear interrupt enables, set irq latency */
-	if (ehci->max_log2_irq_thresh)
-		log2_irq_thresh = ehci->max_log2_irq_thresh;
-	else
-		log2_irq_thresh = 0;
+	log2_irq_thresh = ehci->log2_irq_thresh;
 
 	if (log2_irq_thresh < 0 || log2_irq_thresh > 6)
 		log2_irq_thresh = 0;
@@ -866,7 +861,7 @@ static irqreturn_t ehci_irq (struct usb_hcd *hcd)
 {
 	struct ehci_hcd		*ehci = hcd_to_ehci (hcd);
 	u32			status, masked_status, pcd_status = 0, cmd;
-	int			bh = 0;
+	int			bh;
 
 	spin_lock (&ehci->lock);
 
@@ -983,20 +978,18 @@ static irqreturn_t ehci_irq (struct usb_hcd *hcd)
 		ehci_err(ehci, "fatal error\n");
 		if (hcd->driver->dump_regs)
 			hcd->driver->dump_regs(hcd);
-		//panic("System error\n");
+		panic("System error\n");
 		dbg_cmd(ehci, "fatal", cmd);
 		dbg_status(ehci, "fatal", status);
 		ehci_halt(ehci);
 dead:
-		//ehci_reset(ehci);
-		//ehci_writel(ehci, 0, &ehci->regs->configured_flag);
-		//usb_hc_died(hcd);
+		ehci_reset(ehci);
+		ehci_writel(ehci, 0, &ehci->regs->configured_flag);
+		usb_hc_died(hcd);
 		/* generic layer kills/unlinks all urbs, then
 		 * uses ehci_stop to clean up the rest
 		 */
-		//bh = 1;
-		if (&hcd->ssr_work)
-			queue_work(system_nrt_wq, &hcd->ssr_work);
+		bh = 1;
 	}
 
 	if (bh)

@@ -17,7 +17,7 @@
 #include <linux/i2c.h>
 #include <linux/i2c/sx150x.h>
 #include <linux/gpio.h>
-#include <linux/usb/android_composite.h>
+#include <linux/usb/android.h>
 #include <linux/msm_ssbi.h>
 #include <linux/regulator/msm-gpio-regulator.h>
 #include <linux/mfd/pm8xxx/pm8921.h>
@@ -55,7 +55,6 @@
 #else
 #include <linux/usb/msm_hsusb.h>
 #endif
-#include <mach/htc_usb.h>
 #include <mach/usbdiag.h>
 #include <mach/socinfo.h>
 #include <mach/rpm.h>
@@ -2320,7 +2319,6 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	/* .pmic_id_irq		= PM8921_USB_ID_IN_IRQ(PM8921_IRQ_BASE), */
 	.vbus_power		= msm_hsusb_vbus_power,
 	.power_budget		= 750,
-	.ldo_power_collapse	= true,
 };
 #endif
 
@@ -2378,21 +2376,7 @@ out:
 }
 
 static struct android_usb_platform_data android_usb_pdata = {
-	.vendor_id	= 0x0BB4,
-	.product_id	= 0x0cec,
-	.version	= 0x0100,
-	.product_name		= "Android Phone",
-	.manufacturer_name	= "HTC",
-	.num_products = ARRAY_SIZE(usb_products),
-	.products = usb_products,
-	.num_functions = ARRAY_SIZE(usb_functions_all),
-	.functions = usb_functions_all,
 	.update_pid_and_serial_num = usb_diag_update_pid_and_serial_num,
-	.usb_id_pin_gpio = VILLE_GPIO_USB_ID1,
-	.usb_rmnet_interface = "smd,bam",
-        .serial_number = "000000000000",
-	.fserial_init_string = "smd:modem,tty,tty:autobot,tty:serial,tty:autobot",
-	.nluns		= 1,
 };
 
 static struct platform_device android_usb_device = {
@@ -2414,23 +2398,6 @@ void ville_add_usb_devices(void)
 		printk(KERN_INFO "%s rev: %d\n", __func__, system_rev);
 		msm_otg_pdata.phy_init_seq = phy_init_seq_v3;
 	}
-	android_usb_pdata.products[0].product_id =
-			android_usb_pdata.product_id;
-
-	/* diag bit set */
-	if (get_radio_flag() & 0x20000) {
-		android_usb_pdata.diag_init = 1;
-		android_usb_pdata.modem_init = 1;
-		android_usb_pdata.rmnet_init = 1;
-	}
-
-	/* add cdrom support in normal mode */
-	if (board_mfg_mode() == 0) {
-		android_usb_pdata.nluns = 2;
-		android_usb_pdata.cdrom_lun = 0x3;
-	}
-
-        android_usb_pdata.serial_number = board_serialno();
 
 	platform_device_register(&msm8960_device_gadget_peripheral);
 	platform_device_register(&android_usb_device);

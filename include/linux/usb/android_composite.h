@@ -20,19 +20,13 @@
 #include <linux/usb/composite.h>
 #include <linux/if_ether.h>
 
-#if 0
 struct android_usb_function {
 	struct list_head	list;
 	char			*name;
 	int 			(*bind_config)(struct usb_configuration *c);
 };
-#endif
-struct android_usb_product {
-	/* Vendor ID for this set of functions.
-	 * Default vendor_id in platform data will be used if this is zero.
-	 */
-	__u16 vendor_id;
 
+struct android_usb_product {
 	/* Default product ID. */
 	__u16 product_id;
 
@@ -74,56 +68,6 @@ struct android_usb_platform_data {
 	 */
 	int num_functions;
 	char **functions;
-
-	/* To indicate the GPIO num for USB id
-	 */
-	int usb_id_pin_gpio;
-
-	/* For QCT diag
-	 */
-	int (*update_pid_and_serial_num)(uint32_t, const char *);
-
-	/* For multiple serial function support
-	 * Ex: "tty:serial[,sdio:modem_mdm][,smd:modem]"
-	 */
-	char *fserial_init_string;
-
-	/* the ctrl/data interface name for rmnet interface.
-	 * format(per port):"ctrl0,data0,ctrl1,data1..."
-	 * Ex: "smd,bam" or  "hsic,hsic"
-	 */
-	char *usb_rmnet_interface;
-	char *usb_diag_interface;
-
-	/* The gadget driver need to initial at beginning
-	 */
-	unsigned char diag_init:1;
-	unsigned char modem_init:1;
-	unsigned char rmnet_init:1;
-	unsigned char reserved:5;
-
-	/* ums initial parameters */
-
-	/* number of LUNS */
-	int nluns;
-	/* bitmap of lun to indicate cdrom disk.
-	 * NOTE: Only support one cdrom disk
-	 * and it must be located in last lun */
-	int cdrom_lun;
-	int cdrom_cttype;
-	u32 swfi_latency;
-	/* Re-match the product ID.
-	 * In some devices, the product id is specified by vendor request.
-	 *
-	 * @param product_id: the common product id
-	 * @param intrsharing: 1 for internet sharing, 0 for internet pass through
-	 */
-	int (*match)(int product_id, int intrsharing);
-	u8			usb_core_id;
-	/* hold a performance lock while adb_read a maximum data to keep
-	 * adb throughput level
-	 */
-	int mtp_perf_lock_on;
 };
 
 /* Platform data for "usb_mass_storage" driver. */
@@ -144,11 +88,10 @@ struct usb_ether_platform_data {
 	u32	vendorID;
 	const char *vendorDescr;
 };
-int htc_usb_enable_function(char *name, int ebl);
-#if 0
+
 extern void android_register_function(struct android_usb_function *f);
 
 extern int android_enable_function(struct usb_function *f, int enable);
-#endif
+
 
 #endif	/* __LINUX_USB_ANDROID_H */

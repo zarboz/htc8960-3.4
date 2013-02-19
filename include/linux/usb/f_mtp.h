@@ -72,6 +72,4 @@ struct mtp_event {
  */
 #define MTP_SEND_FILE_WITH_HEADER  _IOW('M', 4, struct mtp_file_range)
 
-#define MTP_SET_CPU_PERF   _IOW('M', 5, int)
-
 #endif /* __LINUX_USB_F_MTP_H */

@@ -265,6 +265,7 @@ config MACH_ELITE
 
 config MACH_VILLE
 	depends on ARCH_MSM8960
+        select MACH_HTC
 	bool "Ville"
 	help
 	  Support for the HTC Ville
@@ -375,6 +376,9 @@ config MSM_KRAIT_TBB_ABORT_HANDLER
 	  at the expense of a very small performance penalty.
 
 	  If unsure, say N.
+
+config  MACH_HTC
+        bool
 
 config  ARCH_MSM_ARM11
 	bool

@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2013, Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -20,11 +20,8 @@
 #include <linux/uaccess.h>
 #include <linux/ratelimit.h>
 #include <mach/usb_bridge.h>
-/* ++SSD_RIL */
-#include <mach/board_htc.h>
-/* --SSD_RIL */
 
-#define MAX_RX_URBS			50
+#define MAX_RX_URBS			100
 #define RMNET_RX_BUFSIZE		2048
 
 #define STOP_SUBMIT_URB_LIMIT		500
@@ -107,18 +104,30 @@ static struct data_bridge	*__dev[MAX_BRIDGE_DEVICES];
 
 /* counter used for indexing data bridge devices */
 static int	ch_id;
-/* ++SSD_RIL: Add DUN interface for serial USB */
-#define DUN_IFC_NUM 3
-static bool usb_diag_enable = false;
-/* --SSD RIL */
-/* ++SSD_RIL: USB PM DEBUG*/
-static bool usb_pm_debug_enabled = false;
-/* --SSD_RIL */
 
 static unsigned int get_timestamp(void);
 static void dbg_timestamp(char *, struct sk_buff *);
 static int submit_rx_urb(struct data_bridge *dev, struct urb *urb,
 		gfp_t flags);
+static void*	interface[MAX_BRIDGE_DEVICES];
+
+static inline int get_chid(struct usb_interface *iface)
+{
+	int	i;
+	for (i = 0; i < MAX_BRIDGE_DEVICES; i++) {
+		if (interface[i] == iface)
+			return i;
+	}
+
+	return -1;
+}
+
+static inline void set_chid(struct usb_interface *iface, int chid)
+{
+	if (chid >= 0 && chid < MAX_BRIDGE_DEVICES) {
+		interface[chid] = iface;
+	}
+}
 
 static inline  bool rx_halted(struct data_bridge *dev)
 {
@@ -276,12 +285,6 @@ static int submit_rx_urb(struct data_bridge *dev, struct urb *rx_urb,
 	if (retval)
 		goto fail;
 
-	/* ++SSD_RIL*/
-#ifdef HTC_PM_DBG
-	if (usb_pm_debug_enabled)
-		usb_mark_intf_last_busy(dev->intf, false);
-#endif
-	/* --SSD_RIL */
 	usb_mark_last_busy(dev->udev);
 	return 0;
 fail:
@@ -359,6 +362,9 @@ void data_bridge_close(unsigned int id)
 
 	dev_dbg(&dev->intf->dev, "%s:\n", __func__);
 
+	cancel_work_sync(&dev->kevent);
+	cancel_work_sync(&dev->process_rx_w);
+
 	usb_unlink_anchored_urbs(&dev->tx_active);
 	usb_unlink_anchored_urbs(&dev->rx_active);
 	usb_unlink_anchored_urbs(&dev->delayed);
@@ -386,7 +392,7 @@ static void defer_kevent(struct work_struct *work)
 
 		status = usb_autopm_get_interface(dev->intf);
 		if (status < 0) {
-			dev_err(&dev->intf->dev,
+			dev_dbg(&dev->intf->dev,
 				"can't acquire interface, status %d\n", status);
 			return;
 		}
@@ -405,7 +411,7 @@ static void defer_kevent(struct work_struct *work)
 
 		status = usb_autopm_get_interface(dev->intf);
 		if (status < 0) {
-			dev_err(&dev->intf->dev,
+			dev_dbg(&dev->intf->dev,
 				"can't acquire interface, status %d\n", status);
 			return;
 		}
@@ -494,7 +500,7 @@ int data_bridge_write(unsigned int id, struct sk_buff *skb)
 
 	result = usb_autopm_get_interface(dev->intf);
 	if (result < 0) {
-		dev_err(&dev->intf->dev, "%s: resume failure\n", __func__);
+		dev_dbg(&dev->intf->dev, "%s: resume failure\n", __func__);
 		goto pm_error;
 	}
 
@@ -512,6 +518,8 @@ int data_bridge_write(unsigned int id, struct sk_buff *skb)
 
 	usb_fill_bulk_urb(txurb, dev->udev, dev->bulk_out,
 			skb->data, skb->len, data_bridge_write_cb, skb);
+
+	txurb->transfer_flags |= URB_ZERO_PACKET;
 
 	if (test_bit(SUSPENDED, &dev->flags)) {
 		usb_anchor_urb(txurb, &dev->delayed);
@@ -940,13 +948,6 @@ bridge_probe(struct usb_interface *iface, const struct usb_device_id *id)
 	udev = interface_to_usbdev(iface);
 	usb_get_dev(udev);
 
-	/* ++SSD_RIL: If the radio flag 20000 is not set, switch the DUN to TTY interface */
-	printk(KERN_INFO "%s: iface number is %d", __func__, iface_num);
-	if (!usb_diag_enable && iface_num == DUN_IFC_NUM && (board_mfg_mode() == 8 || board_mfg_mode() == 6 || board_mfg_mode() == 2)) {
-		printk(KERN_INFO "%s DUN channel is NOT enumed as bridge interface!!! MAY be switched to TTY interface!!!", __func__);
-		return -ENODEV;
-	}
-	/* --SSD_RIL */
 	numends = iface->cur_altsetting->desc.bNumEndpoints;
 	for (i = 0; i < numends; i++) {
 		endpoint = iface->cur_altsetting->endpoint + i;
@@ -983,6 +984,8 @@ bridge_probe(struct usb_interface *iface, const struct usb_device_id *id)
 		goto free_data_bridge;
 	}
 
+	set_chid(iface, ch_id);
+
 	ch_id++;
 
 	return 0;
@@ -1004,20 +1007,26 @@ static void bridge_disconnect(struct usb_interface *intf)
 	struct list_head	*head;
 	struct urb		*rx_urb;
 	unsigned long		flags;
+	int			chid;
 
 	if (!dev) {
 		err("%s: data device not found\n", __func__);
 		return;
 	}
 
-	ch_id--;
-	ctrl_bridge_disconnect(dev->id);
+	ch_id--;	/* leave it for now */
+
+	chid = get_chid(intf);
+
+	if (chid < 0) {
+		err("%s: invalid interface\n", __func__);
+		return;
+	}
+
+	ctrl_bridge_disconnect(chid);
 	platform_device_unregister(dev->pdev);
 	usb_set_intfdata(intf, NULL);
-	__dev[dev->id] = NULL;
-
-	cancel_work_sync(&dev->process_rx_w);
-	cancel_work_sync(&dev->kevent);
+	__dev[chid] = NULL;
 
 	/*free rx urbs*/
 	head = &dev->rx_idle;
@@ -1031,6 +1040,8 @@ static void bridge_disconnect(struct usb_interface *intf)
 
 	usb_put_dev(dev->udev);
 	kfree(dev);
+
+	set_chid(NULL, chid);
 }
 
 /*bit position represents interface number*/
@@ -1071,14 +1082,6 @@ static int __init bridge_init(void)
 {
 	int	ret;
 
-	/* ++SSD_RIL */
-	if (get_radio_flag() & 0x20000)
-		usb_diag_enable = true;
-	/* --SSD_RIL */
-	/* ++SSD_RIL:USB PM DEBUG */
-	if (get_radio_flag() & 0x0008)
-		usb_pm_debug_enabled = true;
-	/* --SSD_RIL */
 	ret = usb_register(&bridge_driver);
 	if (ret) {
 		err("%s: unable to register mdm_bridge driver", __func__);

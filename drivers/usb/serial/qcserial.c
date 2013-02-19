@@ -18,9 +18,6 @@
 #include <linux/usb/serial.h>
 #include <linux/slab.h>
 #include "usb-wwan.h"
-/* ++SSD_RIL */
-#include <mach/board_htc.h>
-/* --SSD_RIL */
 
 #define DRIVER_AUTHOR "Qualcomm Inc"
 #define DRIVER_DESC "Qualcomm USB Serial driver"
@@ -118,10 +115,6 @@ static const struct usb_device_id id_table[] = {
 MODULE_DEVICE_TABLE(usb, id_table);
 
 #define EFS_SYNC_IFC_NUM	2
-/* ++SSD_RIL: Add DUN interface for serial USB */
-#define DUN_IFC_NUM 3
-static bool usb_diag_enable = false;
-/* --SSD_RIL */
 
 static struct usb_driver qcdriver = {
 	.name			= "qcserial",
@@ -156,11 +149,6 @@ static int qcprobe(struct usb_serial *serial, const struct usb_device_id *id)
 		return -ENOMEM;
 
 	spin_lock_init(&data->susp_lock);
-
-	/* ++SSD_RIL */
-	if (!(board_mfg_mode() == 8 || board_mfg_mode() == 6 || board_mfg_mode() == 2))
-	/* --SSD_RIL */
-		usb_enable_autosuspend(serial->dev);
 
 	switch (nintf) {
 	case 1:
@@ -250,11 +238,7 @@ static int qcprobe(struct usb_serial *serial, const struct usb_device_id *id)
 		break;
 
 	case 9:
-		/* ++SSD_RIL */
-		if (get_radio_flag() & 0x20000)
-		usb_diag_enable = true;
-		/* --SSD_RIL */
-		if (ifnum != EFS_SYNC_IFC_NUM && !(!usb_diag_enable && ifnum == DUN_IFC_NUM && (board_mfg_mode() == 8 || board_mfg_mode() == 6 || board_mfg_mode() == 2))) { /* SSD_RIL: Add DUN interface for serial USB*/
+		if (ifnum != EFS_SYNC_IFC_NUM) {
 			kfree(data);
 			break;
 		}

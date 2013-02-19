@@ -1031,11 +1031,7 @@ static int usb_suspend_device(struct usb_device *udev, pm_message_t msg)
 	status = udriver->suspend(udev, msg);
 
  done:
-	dev_dbg(&udev->dev, "%s: status %d\n", __func__, status);
-	/* ++SSD_RIL */
-	if (status != 0)
-		dev_info(&udev->dev, "%s: status %d\n", __func__, status);
-	/* --SSD_RIL */
+	dev_vdbg(&udev->dev, "%s: status %d\n", __func__, status);
 	return status;
 }
 
@@ -1088,11 +1084,7 @@ static int usb_suspend_interface(struct usb_device *udev,
 		dev_err(&intf->dev, "suspend error %d\n", status);
 
  done:
-	dev_dbg(&intf->dev, "%s: status %d\n", __func__, status);
-	/* ++SSD_RIL */
-	if (status != 0)
-		dev_info(&intf->dev, "%s: status %d\n", __func__, status);
-	/* --SSD_RIL */
+	dev_vdbg(&intf->dev, "%s: status %d\n", __func__, status);
 	return status;
 }
 
@@ -1144,7 +1136,7 @@ static int usb_resume_interface(struct usb_device *udev,
 	}
 
 done:
-	dev_info(&intf->dev, "%s: status %d\n", __func__, status);
+	dev_vdbg(&intf->dev, "%s: status %d\n", __func__, status);
 
 	/* Later we will unbind the driver and/or reprobe, if necessary */
 	return status;
@@ -1276,15 +1268,13 @@ static int usb_resume_both(struct usb_device *udev, pm_message_t msg)
 	usb_mark_last_busy(udev);
 
  done:
-	dev_info(&udev->dev, "%s: status %d\n", __func__, status);
+	dev_vdbg(&udev->dev, "%s: status %d\n", __func__, status);
 	if (!status)
 		udev->reset_resume = 0;
 	return status;
 }
 
 #ifdef CONFIG_USB_OTG
-
-
 #define DO_UNBIND	0
 #define DO_REBIND	1
 
@@ -1403,6 +1393,15 @@ int usb_suspend(struct device *dev, pm_message_t msg)
 {
 	struct usb_device	*udev = to_usb_device(dev);
 
+	if (udev->bus->skip_resume) {
+		if (udev->state == USB_STATE_SUSPENDED) {
+			return 0;
+		} else {
+			dev_err(dev, "abort suspend\n");
+			return -EBUSY;
+		}
+	}
+
 	unbind_no_pm_drivers_interfaces(udev);
 
 	/* From now on we are sure all drivers support suspend/resume
@@ -1431,6 +1430,15 @@ int usb_resume(struct device *dev, pm_message_t msg)
 {
 	struct usb_device	*udev = to_usb_device(dev);
 	int			status;
+
+	/*
+	 * Some buses would like to keep their devices in suspend
+	 * state after system resume.  Their resume happen when
+	 * a remote wakeup is detected or interface driver start
+	 * I/O.
+	 */
+	if (udev->bus->skip_resume)
+		return 0;
 
 	/* For all calls, take the device back to full power and
 	 * tell the PM core in case it was autosuspended previously.
@@ -1737,11 +1745,8 @@ static int autosuspend_check(struct usb_device *udev)
 			 */
 			if (intf->dev.power.disable_depth)
 				continue;
-			if (atomic_read(&intf->dev.power.usage_count) > 0) {
-				dev_info(&intf->dev, "%s: EBUSY, cnt %d\n",
-				__func__, atomic_read(&intf->dev.power.usage_count));
+			if (atomic_read(&intf->dev.power.usage_count) > 0)
 				return -EBUSY;
-			}
 			w |= intf->needs_remote_wakeup;
 
 			/* Don't allow autosuspend if the device will need
@@ -1770,21 +1775,14 @@ int usb_runtime_suspend(struct device *dev)
 {
 	struct usb_device	*udev = to_usb_device(dev);
 	int			status;
-	/* ++SSD_RIL */
-	int ret = 0;
-	/* --SSD_RIL */
 
 	/* A USB device can be suspended if it passes the various autosuspend
 	 * checks.  Runtime suspend for a USB device means suspending all the
 	 * interfaces and then the device itself.
 	 */
-	/* ++SSD_RIL */
-	ret = autosuspend_check(udev);
-	/* --SSD_RIL */
-	if (ret != 0) {
-		dev_info(dev, "%s : autosuspend_check ret %d\n", __func__, ret);
+	if (autosuspend_check(udev) != 0)
 		return -EAGAIN;
-	}
+
 	status = usb_suspend_both(udev, PMSG_AUTO_SUSPEND);
 
 	/* Allow a retry if autosuspend failed temporarily */

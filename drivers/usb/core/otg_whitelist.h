@@ -42,19 +42,12 @@ static struct usb_device_id whitelist_table [] = {
 /* gadget zero, for testing */
 { USB_DEVICE(0x0525, 0xa4a0), },
 #endif
-{ USB_DEVICE_CLASS_INFO(USB_CLASS_AUDIO), },
-{ USB_INTERFACE_CLASS_INFO(USB_CLASS_AUDIO), },
-{ USB_DEVICE_CLASS_INFO(USB_CLASS_HID), },
-{ USB_INTERFACE_CLASS_INFO(USB_CLASS_HID), },
-{ USB_DEVICE_CLASS_INFO(USB_CLASS_MASS_STORAGE), },
-{ USB_INTERFACE_CLASS_INFO(USB_CLASS_MASS_STORAGE), },
-{ USB_DEVICE_CLASS_INFO(USB_CLASS_HUB), },
+
 { }	/* Terminating entry */
 };
 
 static int is_targeted(struct usb_device *dev)
 {
-	int loop,pass_flag;
 	struct usb_device_id	*id = whitelist_table;
 
 	/* possible in developer configs only! */
@@ -70,9 +63,6 @@ static int is_targeted(struct usb_device *dev)
 	if ((le16_to_cpu(dev->descriptor.idVendor) == 0x1a0a &&
 	     le16_to_cpu(dev->descriptor.idProduct) == 0x0200))
 		return 1;
-	/* show all interface class information*/
-	for (loop = 0; loop < dev->config->desc.bNumInterfaces;loop++)
-		printk("[USB] USB client interface %d class %d\n",loop,dev->config->intf_cache[loop]->altsetting[0].desc.bInterfaceClass);
 
 	/* NOTE: can't use usb_match_id() since interface caches
 	 * aren't set up yet. this is cut/paste from that code.
@@ -131,31 +121,17 @@ static int is_targeted(struct usb_device *dev)
 			}
 		}
 #endif
-
-		if (id->match_flags & USB_DEVICE_ID_MATCH_INT_CLASS) {
-			pass_flag = 0;
-			for (loop = 0; loop < dev->config->desc.bNumInterfaces;loop++) {
-				if(dev->config->intf_cache[loop]->altsetting[0].desc.bInterfaceClass == id->bInterfaceClass ) {
-					printk("interface class match 0x%x\n",id->bInterfaceClass);
-					pass_flag = 1;
-					break;
-				}
-			}
-			if (pass_flag == 0)
-				continue;
-		}
-
 		return 1;
 	}
 
 	/* add other match criteria here ... */
 
 
-#ifdef	CONFIG_USB_OTG_WHITELIST
 	/* OTG MESSAGE: report errors here, customize to match your product */
 	dev_err(&dev->dev, "device v%04x p%04x is not supported\n",
 		le16_to_cpu(dev->descriptor.idVendor),
 		le16_to_cpu(dev->descriptor.idProduct));
+#ifdef	CONFIG_USB_OTG_WHITELIST
 	return 0;
 #else
 	return 1;
