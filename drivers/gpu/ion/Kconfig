@@ -16,3 +16,9 @@ config ION_MSM
 	depends on ARCH_MSM && ION
 	help
 	  Choose this option if you wish to use ion on an MSM target.
+
+config ION_COMPAT
+       bool "ION Compatiblity for old API"
+       depends on ION
+       help
+          Choose this to enable old IOCTL ION api
