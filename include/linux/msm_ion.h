@@ -285,28 +285,34 @@ struct ion_flag_data {
 	unsigned long flags;
 };
 
+#ifdef CONFIG_ION_COMPAT
 #define ION_IOC_MSM_MAGIC 'M'
+#define IOC_OFFSET 0
+#else
+#define IOC_OFFSET 7
+#define ION_IOC_MSM_MAGIC 'I'
+#endif
 
 /**
  * DOC: ION_IOC_CLEAN_CACHES - clean the caches
  *
  * Clean the caches of the handle specified.
  */
-#define ION_IOC_CLEAN_CACHES	_IOWR(ION_IOC_MSM_MAGIC, 0, \
+#define ION_IOC_CLEAN_CACHES	_IOWR(ION_IOC_MSM_MAGIC, 0+IOC_OFFSET, \
 						struct ion_flush_data)
 /**
  * DOC: ION_IOC_INV_CACHES - invalidate the caches
  *
  * Invalidate the caches of the handle specified.
  */
-#define ION_IOC_INV_CACHES	_IOWR(ION_IOC_MSM_MAGIC, 1, \
+#define ION_IOC_INV_CACHES	_IOWR(ION_IOC_MSM_MAGIC, 1+IOC_OFFSET, \
 						struct ion_flush_data)
 /**
  * DOC: ION_IOC_CLEAN_INV_CACHES - clean and invalidate the caches
  *
  * Clean and invalidate the caches of the handle specified.
  */
-#define ION_IOC_CLEAN_INV_CACHES	_IOWR(ION_IOC_MSM_MAGIC, 2, \
+#define ION_IOC_CLEAN_INV_CACHES	_IOWR(ION_IOC_MSM_MAGIC, 2+IOC_OFFSET, \
 						struct ion_flush_data)
 
 /**
@@ -315,7 +321,7 @@ struct ion_flag_data {
  * Gets the flags of the current handle which indicate cachability,
  * secure state etc.
  */
-#define ION_IOC_GET_FLAGS		_IOWR(ION_IOC_MSM_MAGIC, 3, \
+#define ION_IOC_GET_FLAGS		_IOWR(ION_IOC_MSM_MAGIC, 3+IOC_OFFSET, \
 						struct ion_flag_data)
 
 #endif
