@@ -285,7 +285,7 @@ struct ion_flag_data {
 	unsigned long flags;
 };
 
-#ifdef CONFIG_ION_COMPAT
+#ifndef CONFIG_ION_COMPAT
 #define ION_IOC_MSM_MAGIC 'M'
 #define IOC_OFFSET 0
 #else
@@ -323,5 +323,19 @@ struct ion_flag_data {
  */
 #define ION_IOC_GET_FLAGS		_IOWR(ION_IOC_MSM_MAGIC, 3+IOC_OFFSET, \
 						struct ion_flag_data)
+
+#ifdef CONFIG_ION_COMPAT
+#define ION_IOC_CLEAN_CACHES_C	_IOWR('M', 0, \
+						struct ion_flush_data)
+
+#define ION_IOC_INV_CACHES_C	_IOWR('M', 1, \
+						struct ion_flush_data)
+
+#define ION_IOC_CLEAN_INV_CACHES_C	_IOWR('M', 2, \
+						struct ion_flush_data)
+
+#define ION_IOC_GET_FLAGS_C		_IOWR('M', 3,                   \
+						struct ion_flag_data)
+#endif
 
 #endif

@@ -1361,6 +1361,9 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			return data.fd;
 		break;
 	}
+#ifdef CONFIG_ION_COMPAT
+        case ION_IOC_IMPORT_COMPAT:
+#endif
 	case ION_IOC_IMPORT:
 	{
 		struct ion_fd_data data;

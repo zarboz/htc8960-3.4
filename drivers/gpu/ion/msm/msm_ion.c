@@ -594,6 +594,11 @@ static long msm_ion_custom_ioctl(struct ion_client *client,
 	case ION_IOC_CLEAN_CACHES:
 	case ION_IOC_INV_CACHES:
 	case ION_IOC_CLEAN_INV_CACHES:
+#ifdef CONFIG_ION_COMPAT
+	case ION_IOC_CLEAN_CACHES_C:
+	case ION_IOC_INV_CACHES_C:
+	case ION_IOC_CLEAN_INV_CACHES_C:
+#endif
 	{
 		struct ion_flush_data data;
 		unsigned long start, end;
@@ -635,6 +640,9 @@ static long msm_ion_custom_ioctl(struct ion_client *client,
 		break;
 
 	}
+#ifdef CONFIG_ION_COMPAT
+	case ION_IOC_GET_FLAGS_C:
+#endif
 	case ION_IOC_GET_FLAGS:
 	{
 		struct ion_flag_data data;
